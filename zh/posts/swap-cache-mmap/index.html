@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Swap，Cache 与 mmap - Yang Cen</title>
+  <meta name="description" content="Linux 的 swap，cache 与 mmap众所周知，Milvus 需要把数据全部加载到内存中后才能执行查询。这会对 Milvus 中的查询节点有很高的内存需求，但对于离线场景，用户对查询性能不敏感，可以接受性能降级。这里常规的解决方案是做一个 buffer pool，查询时按需地的将数据加载">
+  <meta property="og:title" content="Swap，Cache 与 mmap - Yang Cen">
+  <meta property="og:description" content="Linux 的 swap，cache 与 mmap众所周知，Milvus 需要把数据全部加载到内存中后才能执行查询。这会对 Milvus 中的查询节点有很高的内存需求，但对于离线场景，用户对查询性能不敏感，可以接受性能降级。这里常规的解决方案是做一个 buffer pool，查询时按需地的将数据加载">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bubblecal.github.io/zh/posts/swap-cache-mmap/">
+  <link rel="canonical" href="https://bubblecal.github.io/zh/posts/swap-cache-mmap/">
+  <link rel="alternate" hreflang="zh-CN" href="https://bubblecal.github.io/zh/posts/swap-cache-mmap/">
+  <link rel="alternate" hreflang="en" href="https://bubblecal.github.io/en/posts/swap-cache-mmap/">
+  <link rel="alternate" type="application/rss+xml" title="Yang Cen" href="/zh/feed.xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body class="article" data-lang="zh">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/zh/" aria-label="Yang Cen home">
+      <span>Yang Cen</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="/zh/">Latest</a>
+      <a href="/zh/about/">About</a>
+      <a href="/zh/archive/">Archive</a>
+      <a href="/zh/feed.xml">RSS</a>
+      <a class="lang-switch" href="/en/posts/swap-cache-mmap/" hreflang="en" data-lang-switch data-lang="en">EN</a>
+      <button class="icon-button" type="button" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">◐</button>
+    </nav>
+  </header>
+  <main id="main">
+  <article class="article-layout">
+    <header class="article-header">
+      <a class="back-link" href="/zh/">Back to latest</a>
+      <p class="article-meta">2023-02-23 · 7 min · Technology · tags: Linux, Memory Management, mmap</p>
+      <h1>Swap，Cache 与 mmap</h1>
+      <p>Linux 的 swap，cache 与 mmap众所周知，Milvus 需要把数据全部加载到内存中后才能执行查询。这会对 Milvus 中的查询节点有很高的内存需求，但对于离线场景，用户对查询性能不敏感，可以接受性能降级。这里常规的解决方案是做一个 buffer pool，查询时按需地的将数据加载</p>
+    </header>
+    <div class="article-body-shell">
+      <nav class="toc" aria-label="Table of contents">
+      <h2>On this page</h2>
+      <a class="toc-level-1" href="#swap%EF%BC%8Ccache-%E4%B8%8E-mmap">Swap，Cache 与 mmap</a>
+      <a class="toc-level-2" href="#cache-%E6%9C%BA%E5%88%B6">Cache 机制</a>
+      <a class="toc-level-2" href="#%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B3%BB%E7%BB%9F%E4%B8%AD%E7%9A%84-mmap-%E5%BA%94%E7%94%A8">数据库系统中的 mmap 应用</a>
+    </nav>
+      <div class="article-content">
+<h1 id="swap%EF%BC%8Ccache-%E4%B8%8E-mmap" tabindex="-1">Swap，Cache 与 mmap</h1>
+<p>众所周知，Milvus 需要把数据全部加载到内存中后才能执行查询。这会对 Milvus 中的查询节点有很高的内存需求，但对于离线场景，用户对查询性能不敏感，可以接受性能降级。这里常规的解决方案是做一个 buffer pool，查询时按需地的将数据加载到内存中。但是这个方案改造力度很大，对于现阶段的 Milvus 来说不合适，这里就不展开了。一个简单而直接的方案是使用 mmap。然而，在最近进行这个改造的时候，我遇到了不少问题，并学到了很多东西。在此记录一下。</p>
+<h2 id="cache-%E6%9C%BA%E5%88%B6" tabindex="-1"><strong>Cache 机制</strong></h2>
+<h3 id="swap-space" tabindex="-1"><strong>Swap Space</strong></h3>
+<p>OS 会有一个 swap space，在内存不足的时候，会将部分 page swap out 到磁盘上，也就是 swap space。swap space 的大小是可配置的，一般会根据机器的 RAM 大小去做对应的调整，网上可以找到一些合适的建议值。</p>
+<p>既然内存不够用，那为什么不直接简单粗暴的增大 swap space，完全让 OS 去决定换出哪些 page 呢？换出哪些 page 是应用无法控制的，如果换出了处于 critical path 上的 page，会对性能造成很大的影响。</p>
+<h3 id="page-cache" tabindex="-1"><strong>Page Cache</strong></h3>
+<p>当 OS 访问文件时，它会将读取的 page 的相邻 page 也读入 page cache 中，通常是当前页及前 15 个 page，以及后 16 个 page。Page cache 有类似于 swap 的换进换出机制，但与 swap 不同的是，由于 OS 知道这个 page 来自哪个文件，因此会直接将这样的 page 换出到文件上。如果是脏页，则会执行一次磁盘 I/O 写回，否则只需将 page 从物理内存中简单地移除。</p>
+<p>综上，可以看出 swap space 是一种特殊的 page cache，它管理的是匿名的 page（即不与文件关联的 page）。匿名的 page 会被换出到 swap space，而其他 page 则会被换出到其关联的文件。</p>
+<h3 id="mmap" tabindex="-1"><strong>Mmap</strong></h3>
+<p>mmap 可以分为两种类型：file-backed map 和 anonymous map。file-backed map 的典型代码通常如下：</p>
+<pre><code class="language-cpp">void* map = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, offset)
+
+</code></pre>
+<p>而 anonymous map 通常是这样的：</p>
+<pre><code class="language-cpp">void* map = mmap(NULL, size, PROT_READ, MAP_SHARED | MAP_ANONYMOUS, -1, 0)
+
+</code></pre>
+<p>anonymous map 分配出来的内存就是上面所说的 anonymous page。在内存不足的时候，它会被换出到 swap space。然而，这里和 malloc 依然存在差异。malloc 会在 heap 中分配内存，而 anonymous map 只是建立映射，不会有实际的物理内存分配。在实际实现中，malloc 在分配大块内存时会调用 mmap 创建 anonymous map。</p>
+<h2 id="%E6%95%B0%E6%8D%AE%E5%BA%93%E7%B3%BB%E7%BB%9F%E4%B8%AD%E7%9A%84-mmap-%E5%BA%94%E7%94%A8" tabindex="-1"><strong>数据库系统中的 mmap 应用</strong></h2>
+<h3 id="%E6%96%87%E4%BB%B6-io" tabindex="-1"><strong>文件 IO</strong></h3>
+<p>考虑读取一个文件，最简单的做法就是先 open，然后 read。这个流程中，从磁盘读取数据到内存中的 buffer，是有一次额外的 copy 的。也就是：</p>
+<p><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext>file</mtext><mo>→</mo><mtext>page cache</mtext><mo>→</mo><mtext>user buffer</mtext><mi>f</mi><mi>i</mi><mi>l</mi><mi>e</mi><mo>→</mo><mi>p</mi><mi>a</mi><mi>g</mi><mi>e</mi><mtext> </mtext><mi>c</mi><mi>a</mi><mi>c</mi><mi>h</mi><mi>e</mi><mo>→</mo><mi>u</mi><mi>s</mi><mi>e</mi><mi>r</mi><mtext> </mtext><mi>b</mi><mi>u</mi><mi>f</mi><mi>f</mi><mi>e</mi><mi>r</mi></mrow><annotation encoding="application/x-tex">\text{file} \to \text{page cache} \to \text{user buffer}file→page cache→user buffer</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord text"><span class="mord">file</span></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">→</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord text"><span class="mord">page cache</span></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">→</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord text"><span class="mord">user buffer</span></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mord mathnormal">i</span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mord mathnormal">e</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">→</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal">p</span><span class="mord mathnormal">a</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal">e</span><span class="mord"> </span><span class="mord mathnormal">c</span><span class="mord mathnormal">a</span><span class="mord mathnormal">c</span><span class="mord mathnormal">h</span><span class="mord mathnormal">e</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">→</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal">u</span><span class="mord mathnormal">s</span><span class="mord mathnormal">e</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord"> </span><span class="mord mathnormal">b</span><span class="mord mathnormal">u</span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mord mathnormal">e</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span></span></span></span></p>
+<p>同样的，写流程是：</p>
+<p><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext>user buffer</mtext><mo>→</mo><mtext>kernel buffer</mtext><mo>→</mo><mtext>file</mtext></mrow><annotation encoding="application/x-tex">\text{user buffer} \to \text{kernel buffer} \to \text{file}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord text"><span class="mord">user buffer</span></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">→</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord text"><span class="mord">kernel buffer</span></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">→</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord text"><span class="mord">file</span></span></span></span></span></p>
+<p>而对于 file-backed mmap，当访问时，是直接访问到 page cache，写的时候换出也是直接从 page cache 到 file，因此可以省掉一次 copy。基于这一点，一些 DB 会用 mmap 来做加速。</p>
+<h3 id="buffer-pool" tabindex="-1"><strong>Buffer Pool</strong></h3>
+<p>DB 管理 page 通常会有两种方案，一种是自己实现一个 buffer pool，另一种就是直接对数据文件做 mmap，相当于直接复用 OS 本身的 cache 机制。</p>
+<h3 id="%E4%B8%BA%E4%BB%80%E4%B9%88%E6%88%91%E4%BB%AC%E4%B8%8D%E5%86%8D%E9%9C%80%E8%A6%81-mmap" tabindex="-1"><strong>为什么我们不再需要 mmap</strong></h3>
+<p>现在认为使用 mmap 来替代 buffer pool 是一个糟糕的方案。可以参见<a href="https://db.cs.cmu.edu/papers/2022/cidr2022-p13-crotty.pdf" target="_blank">这篇论文</a>。同样的，根据这篇论文，目前使用 mmap 来加速文件 IO 也是一个糟糕的方案。</p>
+<p>对于文件 IO，现代操作系统提供了许多异步 IO 机制，例如 io_uring。而 mmap 在 page fault 时是同步阻塞的，性能会比异步 IO 差很多。同时，在读文件时也可以提供一些 hint 来 bypass page cache，从而实现和 mmap 相当的提升。</p>
+<p>对于 buffer pool，由于 mmap 的 page cache 完全由操作系统控制，虽然可以通过 madvise 来调整操作系统对 map 的行为，但很容易用错。使用 mmap 可能导致 DB 在错误的时机将 page 落盘，从而在事务处理中破坏系统的数据一致性。</p>
+<h3 id="%E4%B8%BA%E4%BB%80%E4%B9%88-milvus-%E8%BF%98%E6%98%AF%E8%83%BD%E7%94%A8-mmap" tabindex="-1"><strong>为什么 Milvus 还是能用 mmap</strong></h3>
+<p>其实最理想的情况还是自己实现 buffer pool，根据系统自身的 access pattern 去设计 buffer pool 可以获得更好的性能。但 Milvus 目前的情况用 mmap 也不会有太大问题，因为 Milvus 的数据都是 immutable 的，我们只需要 read-only map。</p>
+
+      </div>
+    </div>
+    <footer class="article-footer">
+      <a rel="prev" href="/zh/posts/824-lab2/"><span>Previous</span>MIT 6.824 2022 Lab2 Raft</a>
+      <a rel="next" href="/zh/posts/datafusion-source-code-part0/"><span>Next</span>datafusion 源码 Part0</a>
+    </footer>
+  </article>
+  </main>
+</body>
+</html>

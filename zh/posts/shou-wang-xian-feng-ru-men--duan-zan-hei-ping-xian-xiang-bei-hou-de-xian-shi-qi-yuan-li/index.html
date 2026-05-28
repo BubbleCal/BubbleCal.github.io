@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>守望先锋入门：短暂黑屏现象背后的显示器原理 - Yang Cen</title>
+  <meta name="description" content="前段时间购置了一个显示器，规格是 2K@240Hz，用起来之后感觉比 144Hz 流畅很多，但是很快我就发现这个显示器有一个问题。 当我进行全屏游戏的时候，如果这个时候切回到桌面，显示器会短暂黑屏一段时间，并且弹出 OSD 显示显示器目前的状态。因为我需要经常切出游戏做别的事情，这个黑屏带来的体验太...">
+  <meta property="og:title" content="守望先锋入门：短暂黑屏现象背后的显示器原理 - Yang Cen">
+  <meta property="og:description" content="前段时间购置了一个显示器，规格是 2K@240Hz，用起来之后感觉比 144Hz 流畅很多，但是很快我就发现这个显示器有一个问题。 当我进行全屏游戏的时候，如果这个时候切回到桌面，显示器会短暂黑屏一段时间，并且弹出 OSD 显示显示器目前的状态。因为我需要经常切出游戏做别的事情，这个黑屏带来的体验太...">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bubblecal.github.io/zh/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/">
+  <link rel="canonical" href="https://bubblecal.github.io/zh/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/">
+  <link rel="alternate" hreflang="zh-CN" href="https://bubblecal.github.io/zh/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/">
+  <link rel="alternate" hreflang="en" href="https://bubblecal.github.io/en/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/">
+  <link rel="alternate" type="application/rss+xml" title="Yang Cen" href="/zh/feed.xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body class="article" data-lang="zh">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/zh/" aria-label="Yang Cen home">
+      <span>Yang Cen</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="/zh/">Latest</a>
+      <a href="/zh/about/">About</a>
+      <a href="/zh/archive/">Archive</a>
+      <a href="/zh/feed.xml">RSS</a>
+      <a class="lang-switch" href="/en/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/" hreflang="en" data-lang-switch data-lang="en">EN</a>
+      <button class="icon-button" type="button" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">◐</button>
+    </nav>
+  </header>
+  <main id="main">
+  <article class="article-layout">
+    <header class="article-header">
+      <a class="back-link" href="/zh/">Back to latest</a>
+      <p class="article-meta">2023-11-13 · 5 min · Technology, Hardware · tags: Overwatch, Display, Hardware</p>
+      <h1>守望先锋入门：短暂黑屏现象背后的显示器原理</h1>
+      <p>前段时间购置了一个显示器，规格是 2K@240Hz，用起来之后感觉比 144Hz 流畅很多，但是很快我就发现这个显示器有一个问题。 当我进行全屏游戏的时候，如果这个时候切回到桌面，显示器会短暂黑屏一段时间，并且弹出 OSD 显示显示器目前的状态。因为我需要经常切出游戏做别的事情，这个黑屏带来的体验太...</p>
+    </header>
+    <div class="article-body-shell">
+      <nav class="toc" aria-label="Table of contents">
+      <h2>On this page</h2>
+      <a class="toc-level-2" href="#%E7%BA%BF%E7%B4%A2%E4%B8%80%EF%BC%9A%E5%88%B7%E6%96%B0%E7%8E%87">线索一：刷新率</a>
+      <a class="toc-level-2" href="#%E7%BA%BF%E7%B4%A2%E4%BA%8C%EF%BC%9A%E8%89%B2%E6%B7%B1%E4%BD%8D%E6%95%B0">线索二：色深位数</a>
+      <a class="toc-level-2" href="#one-more-thing">One More Thing</a>
+      <a class="toc-level-2" href="#%E6%9B%B4%E6%B5%81%E7%95%85%E7%9A%84%E5%AE%88%E6%9C%9B%E5%85%88%E9%94%8B">更流畅的守望先锋</a>
+    </nav>
+      <div class="article-content">
+<p>前段时间购置了一个显示器，规格是 2K@240Hz，用起来之后感觉比 144Hz 流畅很多，但是很快我就发现这个显示器有一个问题。</p>
+<p>当我进行全屏游戏的时候，如果这个时候切回到桌面，显示器会短暂黑屏一段时间，并且弹出 OSD 显示显示器目前的状态。因为我需要经常切出游戏做别的事情，这个黑屏带来的体验太差，我只好用无边框窗口化的显示模式来玩游戏。</p>
+<h2 id="%E7%BA%BF%E7%B4%A2%E4%B8%80%EF%BC%9A%E5%88%B7%E6%96%B0%E7%8E%87" tabindex="-1">线索一：刷新率</h2>
+<p>之前我的内存有一些问题，导致游戏不能稳定在 240fps，所以我决定把刷新率降到 200Hz 来玩，但随之也发现，如果用 200Hz，那么之前的切出游戏黑屏的问题也消失了。这个时候我开始怀疑是不是刷新率过高导致显卡到显示器的数据带宽超过了 DP 的上限，但是按理来说如果超过上限应该是直接不 work，因为我不怎么了解显示器所以后面也没有深入去思考这个问题了。</p>
+<h2 id="%E7%BA%BF%E7%B4%A2%E4%BA%8C%EF%BC%9A%E8%89%B2%E6%B7%B1%E4%BD%8D%E6%95%B0" tabindex="-1">线索二：色深位数</h2>
+<p>几天前我在捣鼓显卡驱动里的一些设置，偶然注意到了显卡的输出色深是 10bit，这个时候我才想起来这个显示器是支持 10bit 的…… 这也让我回想起之前猜想数据带宽过高的问题，所以我把输出改到了 8bit，毕竟这种电竞显示器本身就没什么色准可言，臭打游戏的也不需要这个。</p>
+<p>接下来事情真的按我预料的发展了，改成 8bit 之后，即使在 240Hz 下黑屏问题也消失了。为了验证猜想我计算了一下两种模式下的带宽需求：</p>
+<p>在 8bit 下，显卡输出的数据带宽是：</p>
+<p class='katex-block'><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mn>2560</mn><mo>×</mo><mn>1440</mn><mo>×</mo><mn>240</mn><mo>×</mo><mn>8</mn><mo>×</mo><mn>3</mn><mo>=</mo><mn>21.23</mn><mtext> </mtext><mi>G</mi><mi>b</mi><mi>p</mi><mi>s</mi></mrow><annotation encoding="application/x-tex">2560 \times 1440 \times 240 \times 8 \times 3 = 21.23\ Gbps
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">2</span><span class="mord">5</span><span class="mord">6</span><span class="mord">0</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">1</span><span class="mord">4</span><span class="mord">4</span><span class="mord">0</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">2</span><span class="mord">4</span><span class="mord">0</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">8</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">3</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord">2</span><span class="mord">1</span><span class="mord">.</span><span class="mord">2</span><span class="mord">3</span><span class="mspace"> </span><span class="mord mathnormal">G</span><span class="mord mathnormal">b</span><span class="mord mathnormal">p</span><span class="mord mathnormal">s</span></span></span></span></span></p>
+<p>查询了一下 DP1.4 的最大带宽为 32.4 Gbps，确实是小于这个上限的。但是再计算一下 10bit 下的数据带宽：</p>
+<p class='katex-block'><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mn>2560</mn><mo>×</mo><mn>1440</mn><mo>×</mo><mn>240</mn><mo>×</mo><mn>10</mn><mo>×</mo><mn>3</mn><mo>=</mo><mn>26.54</mn><mtext> </mtext><mi>G</mi><mi>b</mi><mi>p</mi><mi>s</mi></mrow><annotation encoding="application/x-tex">2560 \times 1440 \times 240 \times 10 \times 3 = 26.54\ Gbps
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">2</span><span class="mord">5</span><span class="mord">6</span><span class="mord">0</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">1</span><span class="mord">4</span><span class="mord">4</span><span class="mord">0</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">2</span><span class="mord">4</span><span class="mord">0</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">1</span><span class="mord">0</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">3</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord">2</span><span class="mord">6</span><span class="mord">.</span><span class="mord">5</span><span class="mord">4</span><span class="mspace"> </span><span class="mord mathnormal">G</span><span class="mord mathnormal">b</span><span class="mord mathnormal">p</span><span class="mord mathnormal">s</span></span></span></span></span></p>
+<p>这个带宽还是小于 DP1.4 的 32.4 Gbps 上限，这样就无法解释我的猜想了。于是我决定学习一下 DP 这个东西。看了一圈维基百科之后，首先注意到一个问题，就是 DP 在传输数据的时候，使用了 8b/10b 这种编码。这种编码会将每 8bit 数据编码为一个 10bit 的数据（也就是说有 2bit 的 overhead），所以 DP 传输数据时的实际带宽上限是</p>
+<p class='katex-block'><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mn>32.4</mn><mi>G</mi><mi>b</mi><mi>p</mi><mi>s</mi><mo>×</mo><mn>80</mn><mi mathvariant="normal">%</mi><mo>=</mo><mn>25.92</mn><mtext> </mtext><mi>G</mi><mi>b</mi><mi>p</mi><mi>s</mi></mrow><annotation encoding="application/x-tex">32.4 Gbps \times 80\% = 25.92\ Gbps
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord">3</span><span class="mord">2</span><span class="mord">.</span><span class="mord">4</span><span class="mord mathnormal">G</span><span class="mord mathnormal">b</span><span class="mord mathnormal">p</span><span class="mord mathnormal">s</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.80556em;vertical-align:-0.05556em;"></span><span class="mord">8</span><span class="mord">0</span><span class="mord">%</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord">2</span><span class="mord">5</span><span class="mord">.</span><span class="mord">9</span><span class="mord">2</span><span class="mspace"> </span><span class="mord mathnormal">G</span><span class="mord mathnormal">b</span><span class="mord mathnormal">p</span><span class="mord mathnormal">s</span></span></span></span></span></p>
+<p>到这里已经能解释一半之前的猜想了，10bit 下确实数据带宽超过了 DP 的上限，而学习 DP 的过程中我也了解到了 DSC（Display Stream Compression）这个东西，简单来说就是对数据进行压缩，我检查了显示器的设置，这个选项确实是打开的。也就是说当我开启 10bit 时，游戏中和游戏外显卡输出的色深不一样，导致显示器需要在 DSC 是否启动之间进行切换，从而会黑屏一段时间。</p>
+<h2 id="one-more-thing" tabindex="-1">One More Thing</h2>
+<p>实际上上面的计算依然是错误的，维基百科的 DP 英文词条中列了各种分辨率在各种刷新率下带宽需求，但我发现和我上面的计算结果对不上，而词条中也标注了，计算结果考虑了 CVT-RB v2 的影响，所以我也了解了一下这个东西。</p>
+<p>简单来说，显示器显示的时候并不是所有像素一起更新，而是逐行扫描的，为了避免干扰，实际的扫描长度和高度会比显示器的分辨率更多一些，实际的长度和高度由 VESA 的标准制定，不同分辨率和不同刷新率下都会不一样。VESA 提供了一个<a href="https://tomverbeure.github.io/video_timings_calculator" target="_blank">计算器</a>来计算，以我的情况为例，2K@240Hz下，实际的扫描长度为 2640，而实际的扫描高度是 1619。因此 8bit 下的数据带宽其实是：</p>
+<p class='katex-block'><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mn>2640</mn><mo>×</mo><mn>1619</mn><mo>×</mo><mn>240</mn><mo>×</mo><mn>8</mn><mo>×</mo><mn>3</mn><mo>=</mo><mn>24.62</mn><mtext> </mtext><mi>G</mi><mi>b</mi><mi>p</mi><mi>s</mi></mrow><annotation encoding="application/x-tex">2640 \times 1619 \times 240 \times 8 \times 3 = 24.62\ Gbps
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">2</span><span class="mord">6</span><span class="mord">4</span><span class="mord">0</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">1</span><span class="mord">6</span><span class="mord">1</span><span class="mord">9</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">2</span><span class="mord">4</span><span class="mord">0</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">8</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">3</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord">2</span><span class="mord">4</span><span class="mord">.</span><span class="mord">6</span><span class="mord">2</span><span class="mspace"> </span><span class="mord mathnormal">G</span><span class="mord mathnormal">b</span><span class="mord mathnormal">p</span><span class="mord mathnormal">s</span></span></span></span></span></p>
+<p>这个结果与维基百科中的值一致，也非常接近 DP1.4 的带宽上限。</p>
+<h2 id="%E6%9B%B4%E6%B5%81%E7%95%85%E7%9A%84%E5%AE%88%E6%9C%9B%E5%85%88%E9%94%8B" tabindex="-1">更流畅的守望先锋</h2>
+<p>切换到 8bit，关闭 DSC，游戏会明显流畅不少，DSC 本身会带来延迟，虽然很多资料里说 DSC 带来的影响几乎无法被注意到，但是 reddit 上也有很多人表示这个影响很明显。对于竞技玩家来说，DSC 一定要关掉。</p>
+
+      </div>
+    </div>
+    <footer class="article-footer">
+      <a rel="prev" href="/zh/posts/datafusion-source-code-part0/"><span>Previous</span>datafusion 源码 Part0</a>
+      <a rel="next" href="/zh/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/"><span>Next</span>Paper Reading: Filter Representation in Vectorized Query Execution</a>
+    </footer>
+  </article>
+  </main>
+</body>
+</html>

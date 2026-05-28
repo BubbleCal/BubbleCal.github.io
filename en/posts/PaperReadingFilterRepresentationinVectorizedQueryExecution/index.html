@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paper Reading: Filter Representation in Vectorized Query Execution - Yang Cen</title>
+  <meta name="description" content="A reading note on bitmap and selection-vector filter representations in vectorized query engines, including when each strategy wins and why a hybrid plan can help.">
+  <meta property="og:title" content="Paper Reading: Filter Representation in Vectorized Query Execution - Yang Cen">
+  <meta property="og:description" content="A reading note on bitmap and selection-vector filter representations in vectorized query engines, including when each strategy wins and why a hybrid plan can help.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bubblecal.github.io/en/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/">
+  <link rel="canonical" href="https://bubblecal.github.io/en/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/">
+  <link rel="alternate" hreflang="zh-CN" href="https://bubblecal.github.io/zh/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/">
+  <link rel="alternate" hreflang="en" href="https://bubblecal.github.io/en/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/">
+  <link rel="alternate" type="application/rss+xml" title="Yang Cen" href="/en/feed.xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body class="article" data-lang="en">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/en/" aria-label="Yang Cen home">
+      <span>Yang Cen</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="/en/">Latest</a>
+      <a href="/en/about/">About</a>
+      <a href="/en/archive/">Archive</a>
+      <a href="/en/feed.xml">RSS</a>
+      <a class="lang-switch" href="/zh/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/" hreflang="zh-CN" data-lang-switch data-lang="zh">中文</a>
+      <button class="icon-button" type="button" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">◐</button>
+    </nav>
+  </header>
+  <main id="main">
+  <article class="article-layout">
+    <header class="article-header">
+      <a class="back-link" href="/en/">Back to latest</a>
+      <p class="article-meta">2023-12-02 · 4 min · Paper Reading, Technology · tags: Query Engine, Vectorized Execution, Bitmap</p>
+      <h1>Paper Reading: Filter Representation in Vectorized Query Execution</h1>
+      <p>A reading note on bitmap and selection-vector filter representations in vectorized query engines, including when each strategy wins and why a hybrid plan can help.</p>
+    </header>
+    <div class="article-body-shell">
+      <nav class="toc" aria-label="Table of contents">
+      <h2>On this page</h2>
+      <a class="toc-level-2" href="#filter-representation">Filter Representation</a>
+      <a class="toc-level-2" href="#cost-model">Cost Model</a>
+      <a class="toc-level-2" href="#comparison-scenarios">Comparison Scenarios</a>
+      <a class="toc-level-2" href="#tpc-h-tests">TPC-H Tests</a>
+      <a class="toc-level-2" href="#conclusion">Conclusion</a>
+    </nav>
+      <div class="article-content">
+<p>Vectorized execution engines commonly represent filters with a few strategies:</p>
+<ol>
+<li>Use a bitset to mark selected rows.</li>
+<li>Use a vector to store the indexes of selected rows.</li>
+<li>Copy selected rows and pass the copied data to the next operator.</li>
+</ol>
+<p>This paper mainly discusses the first two strategies, called Bitmap (BM) and Selection Vector (SV). Some systems also use the third strategy. The paper does not discuss it, but I have seen DataFusion use it, so I will return to it at the end.</p>
+<h2 id="filter-representation" tabindex="-1">Filter Representation</h2>
+<p>For BM and SV, there are three main strategies:</p>
+<ul>
+<li>BMFull: always process all rows. Values for unselected rows are undefined. The advantage is that it can fully exploit vectorization.</li>
+<li>BMPartial: process only selected rows, but it still needs to scan all positions and cannot fully use vectorization.</li>
+<li>SVPartial: scan only selected indexes, but it cannot fully use vectorization either.</li>
+</ul>
+<p>The Manual suffix in the paper means SIMD is implemented manually, using AVX-512, instead of relying on compiler optimization. SVManual can still use vectorization to some extent.</p>
+<h2 id="cost-model" tabindex="-1">Cost Model</h2>
+<p>The paper estimates computation cost with this formula:</p>
+<pre><code>R = N * (I + O)</code></pre>
+<p>N is the number of rows, I is the per-iteration cost, O is the per-row processing cost, and R is the estimated runtime.</p>
+<p>The cost of each strategy is determined by these three variables. I is fixed for a given strategy. O and N depend on filter selectivity, and O is also strongly affected by the data type being processed.</p>
+<p>BMFull is special because all three variables are fixed. From this model, we can compare strategies under different filter rates.</p>
+<h2 id="comparison-scenarios" tabindex="-1">Comparison Scenarios</h2>
+<p>The paper defines two primitives:</p>
+<ul>
+<li>Update: operations that update the selected set, such as where a &lt; b.</li>
+<li>Map: operations that transform data, such as select a + b.</li>
+</ul>
+<p>The experiments mainly compare these two kinds of primitives.</p>
+<h3 id="no-data-parallelism" tabindex="-1">No Data Parallelism</h3>
+<p>For string processing, integer division, and similar workloads, the CPU cannot efficiently vectorize multiple rows. In these cases, the per-row processing cost is higher.</p>
+<p><img src="/upload/2023/12/image.png" alt="image" /></p>
+<p>BMPartial and SVPartial perform very similarly. BMPartial has higher iteration overhead, so SVPartial is usually better. In this scenario, SVPartial is the best strategy.</p>
+<h3 id="inefficient-data-parallelism" tabindex="-1">Inefficient Data Parallelism</h3>
+<p>For logical AND and OR operations, SISD may execute less code because of short-circuiting. SIMD does not necessarily cost less than SISD here.</p>
+<p><img src="/upload/2023/12/image-1701504940143.png" alt="image-1701504940143" /></p>
+<p>SVPartial is still best overall. BMFull only has an advantage at high selectivity, mainly for the Map primitive.</p>
+<h3 id="data-parallelism" tabindex="-1">Data Parallelism</h3>
+<p>For ordinary numeric operations, SIMD can be used effectively.</p>
+<p><img src="/upload/2023/12/image-1701505563620.png" alt="image-1701505563620" /></p>
+<p>In this case, partial strategies only win at low selectivity, below roughly 0.2. At higher selectivity, BMFull wins because it benefits from vectorization.</p>
+<p>The paper also studies how the number of arithmetic instructions affects the threshold:</p>
+<p><img src="/upload/2023/12/image-1701505711380.png" alt="image-1701505711380" /></p>
+<p>The threshold is quite stable, around 0.2.</p>
+<h2 id="tpc-h-tests" tabindex="-1">TPC-H Tests</h2>
+<p>The paper proposes a hybrid strategy: use BMFull, or BMFullManual, when selectivity is above 0.2, and use SVManual when selectivity is low. It then compares this hybrid strategy with the single strategies.</p>
+<p>Here is one result:</p>
+<p><img src="/upload/2023/12/image-1701506019343.png" alt="image-1701506019343" /></p>
+<h3 id="q1-high-selectivity-data-parallelism" tabindex="-1">Q1: High-selectivity Data Parallelism</h3>
+<p>This query has a high-selectivity filter, around 0.95, followed by an aggregation with side effects, which means it cannot be data-parallel.</p>
+<p>During filtering, BMFull is 1.6x faster than SVPartial and 1.3x faster than SVManual. But the query time is dominated by the final aggregation, so the end-to-end runtime is similar. One detail is worth noting: BMPartial and BMFull are equivalent for the final aggregation, but BMFull spends more time overall because AVX-512 during filtering causes CPU downclocking.</p>
+<h3 id="q6-mixed-selectivity-data-parallelism" tabindex="-1">Q6: Mixed-selectivity Data Parallelism</h3>
+<p>In this test, the second filter reduces selectivity to 0.15. This triggers the hybrid strategy to switch representations, making it a good case for comparing hybrid performance.</p>
+<p>The hybrid strategy is faster than every single strategy. However, BMFull plus SVManual is slower than BMFull plus BMPartial, even though SVManual alone is better than BMPartial. The reason is conversion overhead from bitmap to selection vector.</p>
+<p>Because final selectivity is low, most query time is spent in earlier SLDP operations, so AVX-512 downclocking does not hurt the whole query much.</p>
+<h3 id="q4-low-selectivity-and-weak-data-parallelism" tabindex="-1">Q4: Low-selectivity and Weak Data Parallelism</h3>
+<p>This test also has low selectivity and cannot fully exploit SIMD. BMFull plus SVPartial is the best strategy, but it is not much better than BMFull plus BMPartial.</p>
+<h2 id="conclusion" tabindex="-1">Conclusion</h2>
+<p>From the paper&#39;s results, a hybrid strategy can improve performance by around 30%. When designing the strategy, one should account for the query type and for effects such as AVX-512 downclocking. Personally, I would choose BMFull plus BMPartial. It is the simplest to implement and is optimal in many cases.</p>
+<p>Finally, about the copy-selected-data strategy mentioned at the beginning: using the same analysis, this strategy should beat SVPartial when selectivity is low and the operation is data-parallel. It adds copy overhead, but it lets the engine use vectorization more fully. DataFusion is not slow with this approach. For high-selectivity filters, though, it should perform poorly, and it should also be bad for string processing.</p>
+<p>The most uncomfortable part is that this representation cannot easily convert to or from bitmap and selection-vector formats, unless the data carries an extra index column, which adds its own overhead. That leaves little flexibility or room for future optimization.</p>
+      </div>
+    </div>
+    <footer class="article-footer">
+      <a rel="prev" href="/en/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/"><span>Previous</span>Overwatch Basics: The Monitor Theory Behind Brief Black Screens</a>
+      <a rel="next" href="/en/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/"><span>Next</span>Paper Reading: VBASE, Relational Queries via Relaxed Monotonicity</a>
+    </footer>
+  </article>
+  </main>
+</body>
+</html>

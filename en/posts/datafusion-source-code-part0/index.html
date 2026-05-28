@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DataFusion Source Code, Part 0 - Yang Cen</title>
+  <meta name="description" content="A source-reading note on DataFusion&#39;s DataFrame execution path, MemoryExec, FilterExec, and how filtering produces new batches.">
+  <meta property="og:title" content="DataFusion Source Code, Part 0 - Yang Cen">
+  <meta property="og:description" content="A source-reading note on DataFusion&#39;s DataFrame execution path, MemoryExec, FilterExec, and how filtering produces new batches.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bubblecal.github.io/en/posts/datafusion-source-code-part0/">
+  <link rel="canonical" href="https://bubblecal.github.io/en/posts/datafusion-source-code-part0/">
+  <link rel="alternate" hreflang="zh-CN" href="https://bubblecal.github.io/zh/posts/datafusion-source-code-part0/">
+  <link rel="alternate" hreflang="en" href="https://bubblecal.github.io/en/posts/datafusion-source-code-part0/">
+  <link rel="alternate" type="application/rss+xml" title="Yang Cen" href="/en/feed.xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body class="article" data-lang="en">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/en/" aria-label="Yang Cen home">
+      <span>Yang Cen</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="/en/">Latest</a>
+      <a href="/en/about/">About</a>
+      <a href="/en/archive/">Archive</a>
+      <a href="/en/feed.xml">RSS</a>
+      <a class="lang-switch" href="/zh/posts/datafusion-source-code-part0/" hreflang="zh-CN" data-lang-switch data-lang="zh">中文</a>
+      <button class="icon-button" type="button" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">◐</button>
+    </nav>
+  </header>
+  <main id="main">
+  <article class="article-layout">
+    <header class="article-header">
+      <a class="back-link" href="/en/">Back to latest</a>
+      <p class="article-meta">2023-05-26 · 3 min · Technology, General · tags: DataFusion, Query Engine, Rust</p>
+      <h1>DataFusion Source Code, Part 0</h1>
+      <p>A source-reading note on DataFusion&#39;s DataFrame execution path, MemoryExec, FilterExec, and how filtering produces new batches.</p>
+    </header>
+    <div class="article-body-shell">
+      <nav class="toc" aria-label="Table of contents">
+      <h2>On this page</h2>
+      <a class="toc-level-1" href="#datafusion">DataFusion</a>
+      <a class="toc-level-2" href="#dataframe">DataFrame</a>
+    </nav>
+      <div class="article-content">
+<h1 id="datafusion" tabindex="-1">DataFusion</h1>
+<h2 id="dataframe" tabindex="-1">DataFrame</h2>
+<p>A DataFrame is a view of the final result dataset. It does not own data and does not execute anything by itself. Query execution starts only when an action method is called.</p>
+<p>Using collect() as an example, the execution flow looks like this:</p>
+<pre><code class="language-rust">pub async fn collect(self) -&gt; Result&lt;Vec&lt;RecordBatch&gt;&gt; {
+    let task_ctx = Arc::new(self.task_ctx());
+    let plan = self.create_physical_plan().await?;
+    collect(plan, task_ctx).await
+}</code></pre>
+<p>collect first creates a physical plan and then calls the collect utility to execute it. Internally, that utility calls execute_stream and consumes the stream to collect data:</p>
+<pre><code class="language-rust">/// Execute the [ExecutionPlan] and return a single stream of results
+pub fn execute_stream(
+    plan: Arc&lt;dyn ExecutionPlan&gt;,
+    context: Arc&lt;TaskContext&gt;,
+) -&gt; Result&lt;SendableRecordBatchStream&gt; {
+    match plan.output_partitioning().partition_count() {
+        0 =&gt; Ok(Box::pin(EmptyRecordBatchStream::new(plan.schema()))),
+        1 =&gt; plan.execute(0, context),
+        _ =&gt; {
+            // merge into a single partition
+            let plan = CoalescePartitionsExec::new(plan.clone());
+            // CoalescePartitionsExec must produce a single partition
+            assert_eq!(1, plan.output_partitioning().partition_count());
+            plan.execute(0, context)
+        }
+    }
+}</code></pre>
+<p>If the input has multiple partitions, CoalescePartitionsExec executes the query over each partition concurrently. Therefore, if we want to query several datasets at the same time, one possible approach is to split them into partitions. DataFusion&#39;s optimizer can also repartition the original data and split one partition into multiple partitions.</p>
+<h3 id="executionplan" tabindex="-1">ExecutionPlan</h3>
+<p>This note mainly looks at MemoryExec and FilterExec.</p>
+<p>#### MemoryExec</p>
+<p>When querying a MemTable, MemoryExec is the leaf node of the query plan:</p>
+<pre><code class="language-rust">fn poll_next(
+    mut self: std::pin::Pin&lt;&amp;mut Self&gt;,
+    _: &amp;mut Context&lt;&#39;_&gt;,
+) -&gt; Poll&lt;Option&lt;Self::Item&gt;&gt; {
+    Poll::Ready(if self.index &lt; self.data.len() {
+        self.index += 1;
+        let batch = &amp;self.data[self.index - 1];
+
+        // return just the columns requested
+        let batch = match self.projection.as_ref() {
+            Some(columns) =&gt; batch.project(columns)?,
+            None =&gt; batch.clone(),
+        };
+
+        Some(Ok(batch))
+    } else {
+        None
+    })
+}</code></pre>
+<p>Projection may be pushed down to this layer. The logic is simple: select the arrays for the projected columns and build a new RecordBatch containing only those columns.</p>
+<p>#### FilterExec</p>
+<p>FilterExec filters data from its input:</p>
+<pre><code class="language-rust">fn poll_next(
+    mut self: Pin&lt;&amp;mut Self&gt;,
+    cx: &amp;mut Context&lt;&#39;_&gt;,
+) -&gt; Poll&lt;Option&lt;Self::Item&gt;&gt; {
+    let poll;
+    loop {
+        match self.input.poll_next_unpin(cx) {
+            Poll::Ready(value) =&gt; match value {
+                Some(Ok(batch)) =&gt; {
+                    let timer = self.baseline_metrics.elapsed_compute().timer();
+                    let filtered_batch = batch_filter(&amp;batch, &amp;self.predicate)?;
+                    // skip entirely filtered batches
+                    if filtered_batch.num_rows() == 0 {
+                        continue;
+                    }
+                    timer.done();
+                    poll = Poll::Ready(Some(Ok(filtered_batch)));
+                    break;
+                }
+                _ =&gt; {
+                    poll = Poll::Ready(value);
+                    break;
+                }
+            },
+            Poll::Pending =&gt; {
+                poll = Poll::Pending;
+                break;
+            }
+        }
+    }
+    self.baseline_metrics.record_poll(poll)
+}</code></pre>
+<p>The filtering logic roughly iterates over the data in the batch, generates a bitmap, and then uses that bitmap to create a FilterPredicate. FilterPredicate has four strategies:</p>
+<ul>
+<li>All: select all rows.</li>
+<li>None: filter out all rows.</li>
+<li>Slice: generate a set of ranges and select rows covered by those ranges.</li>
+<li>Index: generate a set of indexes and select rows at those indexes.</li>
+</ul>
+<p>When selectivity is greater than 0.8, DataFusion uses the slice strategy. Otherwise it uses the index strategy.</p>
+<p>Filtering produces a new batch, and the selected data is copied into that batch.</p>
+      </div>
+    </div>
+    <footer class="article-footer">
+      <a rel="prev" href="/en/posts/swap-cache-mmap/"><span>Previous</span>Swap, Cache, and mmap</a>
+      <a rel="next" href="/en/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/"><span>Next</span>Overwatch Basics: The Monitor Theory Behind Brief Black Screens</a>
+    </footer>
+  </article>
+  </main>
+</body>
+</html>

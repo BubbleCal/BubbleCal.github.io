@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Swap, Cache, and mmap - Yang Cen</title>
+  <meta name="description" content="Notes on swap, page cache, mmap, why databases moved away from mmap as a buffer-pool replacement, and why read-only mmap can still be acceptable for immutable Milvus data.">
+  <meta property="og:title" content="Swap, Cache, and mmap - Yang Cen">
+  <meta property="og:description" content="Notes on swap, page cache, mmap, why databases moved away from mmap as a buffer-pool replacement, and why read-only mmap can still be acceptable for immutable Milvus data.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bubblecal.github.io/en/posts/swap-cache-mmap/">
+  <link rel="canonical" href="https://bubblecal.github.io/en/posts/swap-cache-mmap/">
+  <link rel="alternate" hreflang="zh-CN" href="https://bubblecal.github.io/zh/posts/swap-cache-mmap/">
+  <link rel="alternate" hreflang="en" href="https://bubblecal.github.io/en/posts/swap-cache-mmap/">
+  <link rel="alternate" type="application/rss+xml" title="Yang Cen" href="/en/feed.xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body class="article" data-lang="en">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/en/" aria-label="Yang Cen home">
+      <span>Yang Cen</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="/en/">Latest</a>
+      <a href="/en/about/">About</a>
+      <a href="/en/archive/">Archive</a>
+      <a href="/en/feed.xml">RSS</a>
+      <a class="lang-switch" href="/zh/posts/swap-cache-mmap/" hreflang="zh-CN" data-lang-switch data-lang="zh">中文</a>
+      <button class="icon-button" type="button" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">◐</button>
+    </nav>
+  </header>
+  <main id="main">
+  <article class="article-layout">
+    <header class="article-header">
+      <a class="back-link" href="/en/">Back to latest</a>
+      <p class="article-meta">2023-02-23 · 4 min · Technology · tags: Linux, Memory Management, mmap</p>
+      <h1>Swap, Cache, and mmap</h1>
+      <p>Notes on swap, page cache, mmap, why databases moved away from mmap as a buffer-pool replacement, and why read-only mmap can still be acceptable for immutable Milvus data.</p>
+    </header>
+    <div class="article-body-shell">
+      <nav class="toc" aria-label="Table of contents">
+      <h2>On this page</h2>
+      <a class="toc-level-1" href="#swap-cache-and-mmap">Swap, Cache, and mmap</a>
+      <a class="toc-level-2" href="#cache-mechanisms">Cache Mechanisms</a>
+      <a class="toc-level-2" href="#mmap-in-database-systems">mmap in Database Systems</a>
+    </nav>
+      <div class="article-content">
+<h1 id="swap-cache-and-mmap" tabindex="-1">Swap, Cache, and mmap</h1>
+<p>As is well known, Milvus needs to load all data into memory before executing queries. This creates high memory requirements for query nodes. In offline scenarios, users may not be sensitive to query performance and can accept degradation. The conventional solution is to build a buffer pool and load data into memory on demand during queries.</p>
+<p>However, that would require a large refactor and is not suitable for the current stage of Milvus, so I will not expand on it here. A simpler and more direct option is mmap. While working on this change recently, I ran into several issues and learned a lot, so I am recording the notes here.</p>
+<h2 id="cache-mechanisms" tabindex="-1">Cache Mechanisms</h2>
+<h3 id="swap-space" tabindex="-1">Swap Space</h3>
+<p>An operating system has swap space. When memory is insufficient, it swaps some pages out to disk, into the swap space. The size of swap space is configurable and is usually chosen based on machine RAM. There are many recommended values online.</p>
+<p>If memory is not enough, why not simply increase swap space and let the OS decide which pages to evict? The application cannot control which pages are swapped out. If pages on the critical path are swapped out, performance can suffer badly.</p>
+<h3 id="page-cache" tabindex="-1">Page Cache</h3>
+<p>When the OS accesses a file, it often reads neighboring pages into the page cache as well, usually the current page, the previous 15 pages, and the next 16 pages. The page cache has a swap-in and swap-out mechanism similar to swap. The difference is that the OS knows which file a page comes from, so it can evict the page back to that file. If it is dirty, a disk write is needed. Otherwise, the page can simply be removed from physical memory.</p>
+<p>In short, swap space is a special kind of page cache for anonymous pages, meaning pages not associated with files. Anonymous pages are swapped out to swap space, while file-backed pages are evicted to their associated files.</p>
+<h3 id="mmap" tabindex="-1">mmap</h3>
+<p>mmap can be divided into two types: file-backed maps and anonymous maps. A file-backed map usually looks like this:</p>
+<pre><code class="language-cpp">void* map = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, offset)</code></pre>
+<p>An anonymous map usually looks like this:</p>
+<pre><code class="language-cpp">void* map = mmap(NULL, size, PROT_READ, MAP_SHARED | MAP_ANONYMOUS, -1, 0)</code></pre>
+<p>Memory allocated by an anonymous map consists of the anonymous pages described above. When memory is insufficient, those pages are swapped out to swap space.</p>
+<p>However, this still differs from malloc. malloc allocates memory on the heap, while an anonymous map only establishes a mapping and does not allocate physical memory immediately. In practice, malloc may call mmap to create anonymous maps for large allocations.</p>
+<h2 id="mmap-in-database-systems" tabindex="-1">mmap in Database Systems</h2>
+<h3 id="file-io" tabindex="-1">File IO</h3>
+<p>Consider reading a file. The simplest approach is open followed by read. In this process, there is an extra copy from data read from disk into a user-space buffer:</p>
+<pre><code>file -&gt; page cache -&gt; user buffer</code></pre>
+<p>The write path is similar:</p>
+<pre><code>user buffer -&gt; kernel buffer -&gt; file</code></pre>
+<p>With file-backed mmap, access goes directly to the page cache. Eviction on writes also goes directly from page cache to file, so one copy can be avoided. Based on this, some databases use mmap as an optimization.</p>
+<h3 id="buffer-pool" tabindex="-1">Buffer Pool</h3>
+<p>Databases usually manage pages in one of two ways. One option is to implement their own buffer pool. The other is to mmap data files directly, effectively reusing the operating system&#39;s cache mechanism.</p>
+<h3 id="why-we-no-longer-need-mmap" tabindex="-1">Why We No Longer Need mmap</h3>
+<p>Using mmap as a replacement for a buffer pool is now generally considered a bad idea. See <a href="https://db.cs.cmu.edu/papers/2022/cidr2022-p13-crotty.pdf">this paper</a>. According to the same paper, using mmap to accelerate file IO is also a poor fit today.</p>
+<p>For file IO, modern operating systems provide many asynchronous IO mechanisms, such as io_uring. mmap blocks synchronously on page faults, so it can perform much worse than async IO. When reading files, the application can also provide hints to bypass the page cache and get improvements similar to mmap.</p>
+<p>For buffer pools, mmap&#39;s page cache is fully controlled by the operating system. Although madvise can adjust OS behavior for the mapping, it is easy to use incorrectly. mmap can cause a database to flush pages at the wrong time, which may break consistency in transaction processing.</p>
+<h3 id="why-mmap-still-works-for-milvus" tabindex="-1">Why mmap Still Works for Milvus</h3>
+<p>The ideal solution is still to implement a buffer pool. A buffer pool designed around the system&#39;s own access patterns can achieve better performance. But mmap is not too problematic for Milvus in its current situation, because Milvus data is immutable. We only need read-only mappings.</p>
+      </div>
+    </div>
+    <footer class="article-footer">
+      <a rel="prev" href="/en/posts/824-lab2/"><span>Previous</span>MIT 6.824 2022 Lab 2: Raft</a>
+      <a rel="next" href="/en/posts/datafusion-source-code-part0/"><span>Next</span>DataFusion Source Code, Part 0</a>
+    </footer>
+  </article>
+  </main>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paper Reading: VBASE, Relational Queries via Relaxed Monotonicity - Yang Cen</title>
+  <meta name="description" content="A reading note on VBASE and relaxed monotonicity: how ANN search can expose a streaming primitive and why that matters for filters, hybrid scoring, and vector joins.">
+  <meta property="og:title" content="Paper Reading: VBASE, Relational Queries via Relaxed Monotonicity - Yang Cen">
+  <meta property="og:description" content="A reading note on VBASE and relaxed monotonicity: how ANN search can expose a streaming primitive and why that matters for filters, hybrid scoring, and vector joins.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bubblecal.github.io/en/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/">
+  <link rel="canonical" href="https://bubblecal.github.io/en/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/">
+  <link rel="alternate" hreflang="zh-CN" href="https://bubblecal.github.io/zh/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/">
+  <link rel="alternate" hreflang="en" href="https://bubblecal.github.io/en/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/">
+  <link rel="alternate" type="application/rss+xml" title="Yang Cen" href="/en/feed.xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body class="article" data-lang="en">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/en/" aria-label="Yang Cen home">
+      <span>Yang Cen</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="/en/">Latest</a>
+      <a href="/en/about/">About</a>
+      <a href="/en/archive/">Archive</a>
+      <a href="/en/feed.xml">RSS</a>
+      <a class="lang-switch" href="/zh/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/" hreflang="zh-CN" data-lang-switch data-lang="zh">中文</a>
+      <button class="icon-button" type="button" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">◐</button>
+    </nav>
+  </header>
+  <main id="main">
+  <article class="article-layout">
+    <header class="article-header">
+      <a class="back-link" href="/en/">Back to latest</a>
+      <p class="article-meta">2023-12-10 · 3 min · Paper Reading, Technology · tags: Vector Search, ANN, Query Processing</p>
+      <h1>Paper Reading: VBASE, Relational Queries via Relaxed Monotonicity</h1>
+      <p>A reading note on VBASE and relaxed monotonicity: how ANN search can expose a streaming primitive and why that matters for filters, hybrid scoring, and vector joins.</p>
+    </header>
+    <div class="article-body-shell">
+      <nav class="toc" aria-label="Table of contents">
+      <h2>On this page</h2>
+      <a class="toc-level-1" href="#tl-dr">TL;DR</a>
+      <a class="toc-level-1" href="#relaxed-monotonicity">Relaxed Monotonicity</a>
+      <a class="toc-level-1" href="#scenario-optimizations">Scenario Optimizations</a>
+      <a class="toc-level-2" href="#scalar-filter-plus-vector-search">Scalar Filter plus Vector Search</a>
+      <a class="toc-level-2" href="#multi-vector-queries">Multi-vector Queries</a>
+    </nav>
+      <div class="article-content">
+<h1 id="tl-dr" tabindex="-1">TL;DR</h1>
+<p>This paper introduces the concept of relaxed monotonicity. It observes that ANN search over vector indexes usually has two phases. In the first phase, the search quickly moves closer to the query vector. In the second phase, candidates as a whole gradually move farther away from the query. The paper gives a way to detect when the search has entered the second phase. Once the search has entered that phase and already has k results, it can stop early and improve performance.</p>
+<p>The powerful part is not just early termination. Once we know the search has entered the second phase, we can continue the search and produce more vectors in roughly increasing distance order. This breaks out of the traditional top-k-only ANN interface and gives us a streaming result primitive.</p>
+<p>With that streaming primitive, scalar filtering, hybrid scoring, multi-vector queries, and even vector joins can be optimized significantly.</p>
+<h1 id="relaxed-monotonicity" tabindex="-1">Relaxed Monotonicity</h1>
+<p>From the perspective of monotonicity, an index search starts from some point and keeps looking for data points that are closer to the target. Vector indexes do not have strict monotonicity, but the HNSW example in the paper illustrates the pattern:</p>
+<p><img src="/upload/2023/12/image-1702210347863.png" alt="image-1702210347863" /></p>
+<p>The search process can be divided into two phases. Early in the query, traversal in the upper layers quickly moves the candidate set closer to the target. Later, the candidate set has mostly converged, and continuing traversal rarely finds significantly better results.</p>
+<p>If we can detect this turning point, we can optimize ANN search: after entering the second phase, once we have K results we can stop. The paper gives this intuition:</p>
+<p><img src="/upload/2023/12/image-1702210525568.png" alt="image-1702210525568" /></p>
+<p>Here q is the query vector, R_q is the neighborhood radius, and M_q^s is the median distance from the current traversal window to q. The intuition is that if M_q^s &gt;= R_q, the search may have entered the second phase.</p>
+<p>This is not a rigorous guarantee. For example, if the query is top-2 and w = 1, the method above may decide that the search has entered the second phase even when recall is 0. In an HNSW-style implementation, the coarse-grained graph does not use this check and is always searched. The check is used only in the fine-grained graph. A larger w can also improve recall.</p>
+<p>Relaxed monotonicity provides a very useful primitive. The algorithm only needs to run until it reaches the second phase. It can then save the traversal state and keep producing results, effectively exposing a streaming query primitive.</p>
+<h1 id="scenario-optimizations" tabindex="-1">Scenario Optimizations</h1>
+<p>The streaming primitive enabled by relaxed monotonicity can improve several workloads.</p>
+<h2 id="scalar-filter-plus-vector-search" tabindex="-1">Scalar Filter plus Vector Search</h2>
+<p>Scalar filtering with vector search is a basic feature in vector databases. Because ANN indexes usually expose only a batched top-k interface, current systems mainly use two strategies:</p>
+<ul>
+<li>Pre-filtering: run scalar filtering first, generate a bitmap, and then use the bitmap to filter vectors during ANN search.</li>
+<li>Post-filtering: query for K&#39; results where K&#39; is larger than K, then apply the scalar filter to the returned result set.</li>
+</ul>
+<p>Counterintuitively, pre-filtering can slow down ANN indexes because the search may need to traverse more vectors to find enough matching results. Lower selectivity usually means worse performance. Post-filtering has the obvious problem that K&#39; is hard to choose. We do not know in advance how many candidates will be filtered out. If the final result set is too small, the system may have to retry with an even larger K&#39;&#39;, which can be very expensive.</p>
+<p><img src="/upload/2023/12/image-1702212206389.png" alt="image-1702212206389" /></p>
+<p>With the streaming primitive, scalar filtering plus vector search becomes simple. We continuously pull results from the index and apply the scalar filter. Once the final result set reaches K, we stop. Performance is equivalent to post-filtering with the optimal K~.</p>
+<h2 id="multi-vector-queries" tabindex="-1">Multi-vector Queries</h2>
+<p>A multi-vector query searches over multiple vector columns and aggregates the scores to select the final top-k results.</p>
+<p>I stopped here for now. I need to learn NRA first before continuing.</p>
+      </div>
+    </div>
+    <footer class="article-footer">
+      <a rel="prev" href="/en/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/"><span>Previous</span>Paper Reading: Filter Representation in Vectorized Query Execution</a>
+      <a rel="next" href="/en/posts/4bitpqreadingimplementing/"><span>Next</span>4-bit PQ: Reading and Implementation Notes</a>
+    </footer>
+  </article>
+  </main>
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yang Cen</title>
+  <meta name="description" content="关于向量查询、全文检索、查询引擎和分布式系统的技术笔记。">
+  <meta property="og:title" content="Yang Cen">
+  <meta property="og:description" content="关于向量查询、全文检索、查询引擎和分布式系统的技术笔记。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bubblecal.github.io/zh/">
+  <link rel="canonical" href="https://bubblecal.github.io/zh/">
+  <link rel="alternate" hreflang="zh-CN" href="https://bubblecal.github.io/zh/">
+  <link rel="alternate" hreflang="en" href="https://bubblecal.github.io/en/">
+  <link rel="alternate" type="application/rss+xml" title="Yang Cen" href="/zh/feed.xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body class="home" data-lang="zh">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/zh/" aria-label="Yang Cen home">
+      <span>Yang Cen</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="/zh/">Latest</a>
+      <a href="/zh/about/">About</a>
+      <a href="/zh/archive/">Archive</a>
+      <a href="/zh/feed.xml">RSS</a>
+      <a class="lang-switch" href="/en/" hreflang="en" data-lang-switch data-lang="en">EN</a>
+      <button class="icon-button" type="button" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">◐</button>
+    </nav>
+  </header>
+  <main id="main">
+  <section class="home-hero" aria-labelledby="home-title">
+    <div class="home-hero__intro">
+      <p class="eyebrow">systems notes / paper reading / build logs</p>
+      <h1 id="home-title">Yang Cen</h1>
+      <p class="lede">Notes on vector databases, query engines, operating systems, and the engineering details that decide whether an idea actually ships.</p>
+    </div>
+    <div class="home-hero__stats" aria-label="Site statistics">
+      <div><strong>7</strong><span>published posts</span></div>
+      <div><strong>4</strong><span>categories</span></div>
+      <div><strong>19</strong><span>tags</span></div>
+    </div>
+  </section>
+  <section class="content-shell">
+    <aside class="side-panel" aria-label="Categories">
+      <h2>Categories</h2>
+      <div class="filter-group" data-filter-group>
+        <button type="button" class="is-active" data-filter="all">All <span>7</span></button>
+        <button type="button" data-filter="Paper Reading">Paper Reading <span>3</span></button>
+        <button type="button" data-filter="Technology">Technology <span>7</span></button>
+        <button type="button" data-filter="Hardware">Hardware <span>1</span></button>
+        <button type="button" data-filter="General">General <span>1</span></button>
+      </div>
+    </aside>
+    <section class="post-stream" aria-labelledby="latest-title">
+      <div class="stream-header">
+        <div>
+          <p class="eyebrow">latest</p>
+          <h2 id="latest-title">Recent writing</h2>
+        </div>
+        <label class="search-box">
+          <span>Search</span>
+          <input type="search" data-search placeholder="Title, category, tag">
+        </label>
+      </div>
+      <div class="post-list">
+        <article class="post-card" data-post-card data-title="4bit PQ reading &amp; implementing" data-categories="Paper Reading Technology" data-tags="Vector Search Product Quantization SIMD">
+  <div class="post-card__body">
+    <div class="post-card__meta">2024-11-29 · 7 min · Paper Reading, Technology · tags: Vector Search, Product Quantization, SIMD</div>
+    <h2><a href="/zh/posts/4bitpqreadingimplementing/">4bit PQ reading &amp; implementing</a></h2>
+    <p>最近在做 4bit PQ(Accelerated Nearest Neighbor Search with Quick ADC) , 直觉上的话 4bit PQ 能比 8bit PQ 快很多，不过到完整实现这个东西后才发现坑还挺大的…… Product Quantization 从 PQ 说起，PQ...</p>
+  </div>
+  <a class="post-card__mark" href="/zh/posts/4bitpqreadingimplementing/" aria-label="4bit PQ reading &amp; implementing"><span>2024</span></a>
+</article>
+        <article class="post-card" data-post-card data-title="Paper Reading: VBASE: Relational Queries via Relaxed Monotonicity" data-categories="Paper Reading Technology" data-tags="Vector Search ANN Query Processing">
+  <div class="post-card__body">
+    <div class="post-card__meta">2023-12-10 · 5 min · Paper Reading, Technology · tags: Vector Search, ANN, Query Processing</div>
+    <h2><a href="/zh/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/">Paper Reading: VBASE: Relational Queries via Relaxed Monotonicity</a></h2>
+    <p>TL;DR这篇论文首先是引入了 relaxed monotonicity 的概念，然后基于对向量索引的 relaxed monotonicity 性质的观察：ANN 的检索过程中会有两个阶段，第一阶段中会快速向目标向量靠近，第二阶段向量整体上会逐渐远离目标向量。论文中给出了判定查询已经进入第二阶段的</p>
+  </div>
+  <a class="post-card__media" href="/zh/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/" aria-label="Paper Reading: VBASE: Relational Queries via Relaxed Monotonicity"><img src="/upload/2023/12/image-1702210347863.png" alt="" loading="eager"></a>
+</article>
+        <article class="post-card" data-post-card data-title="Paper Reading: Filter Representation in Vectorized Query Execution" data-categories="Paper Reading Technology" data-tags="Query Engine Vectorized Execution Bitmap">
+  <div class="post-card__body">
+    <div class="post-card__meta">2023-12-02 · 6 min · Paper Reading, Technology · tags: Query Engine, Vectorized Execution, Bitmap</div>
+    <h2><a href="/zh/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/">Paper Reading: Filter Representation in Vectorized Query Execution</a></h2>
+    <p>目前向量化执行引擎在执行过滤操作时会有这样一些策略：用一个 bitset 来标记哪些数据是被过滤选中的用一个 vector 存储被命中的数据的下标将命中的数据复制后传递到下一个算子这篇文章主要讨论了前两种，文章里称之为 Bitmap(BM) 和 Seleteced Vector (SV)。第三种策略</p>
+  </div>
+  <a class="post-card__media" href="/zh/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/" aria-label="Paper Reading: Filter Representation in Vectorized Query Execution"><img src="/upload/2023/12/image.png" alt="" loading="lazy"></a>
+</article>
+        <article class="post-card" data-post-card data-title="守望先锋入门：短暂黑屏现象背后的显示器原理" data-categories="Technology Hardware" data-tags="Overwatch Display Hardware">
+  <div class="post-card__body">
+    <div class="post-card__meta">2023-11-13 · 5 min · Technology, Hardware · tags: Overwatch, Display, Hardware</div>
+    <h2><a href="/zh/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/">守望先锋入门：短暂黑屏现象背后的显示器原理</a></h2>
+    <p>前段时间购置了一个显示器，规格是 2K@240Hz，用起来之后感觉比 144Hz 流畅很多，但是很快我就发现这个显示器有一个问题。 当我进行全屏游戏的时候，如果这个时候切回到桌面，显示器会短暂黑屏一段时间，并且弹出 OSD 显示显示器目前的状态。因为我需要经常切出游戏做别的事情，这个黑屏带来的体验太...</p>
+  </div>
+  <a class="post-card__mark" href="/zh/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/" aria-label="守望先锋入门：短暂黑屏现象背后的显示器原理"><span>2023</span></a>
+</article>
+        <article class="post-card" data-post-card data-title="datafusion 源码 Part0" data-categories="Technology General" data-tags="DataFusion Query Engine Rust">
+  <div class="post-card__body">
+    <div class="post-card__meta">2023-05-26 · 10 min · Technology, General · tags: DataFusion, Query Engine, Rust</div>
+    <h2><a href="/zh/posts/datafusion-source-code-part0/">datafusion 源码 Part0</a></h2>
+    <p>datafusion DataFrame DataFrame 是最终结果数据集的一个视图，并不持有数据，也没有执行。当调用一些 action 方法后才会开始真正执行查询。 下面以 collect() 方法为例，过一下整个执行的流程： pub async fn collect(self) -&gt; Res...</p>
+  </div>
+  <a class="post-card__mark" href="/zh/posts/datafusion-source-code-part0/" aria-label="datafusion 源码 Part0"><span>2023</span></a>
+</article>
+        <article class="post-card" data-post-card data-title="Swap，Cache 与 mmap" data-categories="Technology" data-tags="Linux Memory Management mmap">
+  <div class="post-card__body">
+    <div class="post-card__meta">2023-02-23 · 7 min · Technology · tags: Linux, Memory Management, mmap</div>
+    <h2><a href="/zh/posts/swap-cache-mmap/">Swap，Cache 与 mmap</a></h2>
+    <p>Linux 的 swap，cache 与 mmap众所周知，Milvus 需要把数据全部加载到内存中后才能执行查询。这会对 Milvus 中的查询节点有很高的内存需求，但对于离线场景，用户对查询性能不敏感，可以接受性能降级。这里常规的解决方案是做一个 buffer pool，查询时按需地的将数据加载</p>
+  </div>
+  <a class="post-card__mark" href="/zh/posts/swap-cache-mmap/" aria-label="Swap，Cache 与 mmap"><span>2023</span></a>
+</article>
+        <article class="post-card" data-post-card data-title="MIT 6.824 2022 Lab2 Raft" data-categories="Technology" data-tags="Distributed Systems Raft Course">
+  <div class="post-card__body">
+    <div class="post-card__meta">2023-01-07 · 13 min · Technology · tags: Distributed Systems, Raft, Course</div>
+    <h2><a href="/zh/posts/824-lab2/">MIT 6.824 2022 Lab2 Raft</a></h2>
+    <p>MIT 6.824 Lab2 Raft最近突然想再刷一下 6.824，想试试自己现在做会不会容易得多。上次做已经是大二的时候了，对之前的代码已经毫无记忆了（而且也写得不咋样）。因为 Lab1 没什么难度，我这次就跳过了，直接从 Lab2 开始。Lab2 是实现 Raft，在继续看下面的内容之前，你至</p>
+  </div>
+  <a class="post-card__mark" href="/zh/posts/824-lab2/" aria-label="MIT 6.824 2022 Lab2 Raft"><span>2023</span></a>
+</article>
+      </div>
+      <p class="empty-state" data-empty-state hidden>No matching posts.</p>
+    </section>
+  </section>
+  <section class="featured-band" aria-labelledby="featured-title">
+    <div>
+      <p class="eyebrow">selected</p>
+      <h2 id="featured-title">Start here</h2>
+    </div>
+    <div class="featured-links">
+      <a href="/zh/posts/4bitpqreadingimplementing/">
+        <span>2024-11-29</span>
+        4bit PQ reading &amp; implementing
+      </a>
+      <a href="/zh/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/">
+        <span>2023-12-10</span>
+        Paper Reading: VBASE: Relational Queries via Relaxed Monotonicity
+      </a>
+      <a href="/zh/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/">
+        <span>2023-12-02</span>
+        Paper Reading: Filter Representation in Vectorized Query Execution
+      </a>
+      <a href="/zh/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/">
+        <span>2023-11-13</span>
+        守望先锋入门：短暂黑屏现象背后的显示器原理
+      </a>
+    </div>
+  </section>
+  </main>
+</body>
+</html>

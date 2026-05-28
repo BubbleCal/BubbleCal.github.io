@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Not found</title>
+  <script>
+    (function () {
+      var saved = localStorage.getItem("yah01-blog-language");
+      var languages = navigator.languages || [navigator.language || ""];
+      var detected = languages.some(function (language) { return /^zh/i.test(language); }) ? "zh" : "en";
+      var language = saved === "zh" || saved === "en" ? saved : detected;
+      location.replace(language === "zh" ? "/zh/404.html" : "/en/404.html");
+    })();
+  </script>
+  <link rel="stylesheet" href="/assets/site.css">
+</head>
+<body class="redirect-page">
+  <main class="redirect-choice">
+    <h1>Yang Cen</h1>
+    <p>Choose a language.</p>
+    <p><a href="/zh/404.html" data-lang-switch data-lang="zh">中文</a> <a href="/en/404.html" data-lang-switch data-lang="en">English</a></p>
+  </main>
+  <script src="/assets/site.js"></script>
+</body>
+</html>

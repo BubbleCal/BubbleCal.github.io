@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+<channel>
+  <title>Yang Cen</title>
+  <link>https://bubblecal.github.io/en/</link>
+  <description>Notes on vector search, full-text search, query engines, and distributed systems.</description>
+  <language>en-US</language>
+  <item>
+    <title>4-bit PQ: Reading and Implementation Notes</title>
+    <link>https://bubblecal.github.io/en/posts/4bitpqreadingimplementing/</link>
+    <guid>https://bubblecal.github.io/en/posts/4bitpqreadingimplementing/</guid>
+    <pubDate>Fri, 29 Nov 2024 06:26:43 GMT</pubDate>
+    <description>Notes from implementing 4-bit product quantization: why it should be faster than 8-bit PQ, where the paper leaves implementation gaps, and what tradeoffs worked in practice.</description>
+  </item>
+  <item>
+    <title>Paper Reading: VBASE, Relational Queries via Relaxed Monotonicity</title>
+    <link>https://bubblecal.github.io/en/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/</link>
+    <guid>https://bubblecal.github.io/en/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/</guid>
+    <pubDate>Sun, 10 Dec 2023 12:56:07 GMT</pubDate>
+    <description>A reading note on VBASE and relaxed monotonicity: how ANN search can expose a streaming primitive and why that matters for filters, hybrid scoring, and vector joins.</description>
+  </item>
+  <item>
+    <title>Paper Reading: Filter Representation in Vectorized Query Execution</title>
+    <link>https://bubblecal.github.io/en/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/</link>
+    <guid>https://bubblecal.github.io/en/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/</guid>
+    <pubDate>Sat, 02 Dec 2023 08:06:08 GMT</pubDate>
+    <description>A reading note on bitmap and selection-vector filter representations in vectorized query engines, including when each strategy wins and why a hybrid plan can help.</description>
+  </item>
+  <item>
+    <title>Overwatch Basics: The Monitor Theory Behind Brief Black Screens</title>
+    <link>https://bubblecal.github.io/en/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/</link>
+    <guid>https://bubblecal.github.io/en/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/</guid>
+    <pubDate>Mon, 13 Nov 2023 05:09:19 GMT</pubDate>
+    <description>A debugging note on why a 2K 240 Hz monitor briefly blacked out when switching away from fullscreen games, and how refresh rate, bit depth, DisplayPort bandwidth, and DSC explain it.</description>
+  </item>
+  <item>
+    <title>DataFusion Source Code, Part 0</title>
+    <link>https://bubblecal.github.io/en/posts/datafusion-source-code-part0/</link>
+    <guid>https://bubblecal.github.io/en/posts/datafusion-source-code-part0/</guid>
+    <pubDate>Fri, 26 May 2023 09:15:40 GMT</pubDate>
+    <description>A source-reading note on DataFusion&#39;s DataFrame execution path, MemoryExec, FilterExec, and how filtering produces new batches.</description>
+  </item>
+  <item>
+    <title>Swap, Cache, and mmap</title>
+    <link>https://bubblecal.github.io/en/posts/swap-cache-mmap/</link>
+    <guid>https://bubblecal.github.io/en/posts/swap-cache-mmap/</guid>
+    <pubDate>Thu, 23 Feb 2023 14:15:36 GMT</pubDate>
+    <description>Notes on swap, page cache, mmap, why databases moved away from mmap as a buffer-pool replacement, and why read-only mmap can still be acceptable for immutable Milvus data.</description>
+  </item>
+  <item>
+    <title>MIT 6.824 2022 Lab 2: Raft</title>
+    <link>https://bubblecal.github.io/en/posts/824-lab2/</link>
+    <guid>https://bubblecal.github.io/en/posts/824-lab2/</guid>
+    <pubDate>Sat, 07 Jan 2023 05:47:54 GMT</pubDate>
+    <description>Notes from redoing MIT 6.824 Lab 2, covering Raft elections, log replication, persistence, log compaction, and common edge cases in the lab tests.</description>
+  </item>
+</channel>
+</rss>

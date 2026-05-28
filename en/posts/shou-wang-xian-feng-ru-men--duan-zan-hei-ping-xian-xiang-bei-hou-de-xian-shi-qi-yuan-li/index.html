@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Overwatch Basics: The Monitor Theory Behind Brief Black Screens - Yang Cen</title>
+  <meta name="description" content="A debugging note on why a 2K 240 Hz monitor briefly blacked out when switching away from fullscreen games, and how refresh rate, bit depth, DisplayPort bandwidth, and DSC explain it.">
+  <meta property="og:title" content="Overwatch Basics: The Monitor Theory Behind Brief Black Screens - Yang Cen">
+  <meta property="og:description" content="A debugging note on why a 2K 240 Hz monitor briefly blacked out when switching away from fullscreen games, and how refresh rate, bit depth, DisplayPort bandwidth, and DSC explain it.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bubblecal.github.io/en/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/">
+  <link rel="canonical" href="https://bubblecal.github.io/en/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/">
+  <link rel="alternate" hreflang="zh-CN" href="https://bubblecal.github.io/zh/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/">
+  <link rel="alternate" hreflang="en" href="https://bubblecal.github.io/en/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/">
+  <link rel="alternate" type="application/rss+xml" title="Yang Cen" href="/en/feed.xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body class="article" data-lang="en">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/en/" aria-label="Yang Cen home">
+      <span>Yang Cen</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="/en/">Latest</a>
+      <a href="/en/about/">About</a>
+      <a href="/en/archive/">Archive</a>
+      <a href="/en/feed.xml">RSS</a>
+      <a class="lang-switch" href="/zh/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/" hreflang="zh-CN" data-lang-switch data-lang="zh">中文</a>
+      <button class="icon-button" type="button" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">◐</button>
+    </nav>
+  </header>
+  <main id="main">
+  <article class="article-layout">
+    <header class="article-header">
+      <a class="back-link" href="/en/">Back to latest</a>
+      <p class="article-meta">2023-11-13 · 3 min · Technology, Hardware · tags: Overwatch, Display, Hardware</p>
+      <h1>Overwatch Basics: The Monitor Theory Behind Brief Black Screens</h1>
+      <p>A debugging note on why a 2K 240 Hz monitor briefly blacked out when switching away from fullscreen games, and how refresh rate, bit depth, DisplayPort bandwidth, and DSC explain it.</p>
+    </header>
+    <div class="article-body-shell">
+      <nav class="toc" aria-label="Table of contents">
+      <h2>On this page</h2>
+      <a class="toc-level-2" href="#clue-1-refresh-rate">Clue 1: Refresh Rate</a>
+      <a class="toc-level-2" href="#clue-2-bit-depth">Clue 2: Bit Depth</a>
+      <a class="toc-level-2" href="#one-more-thing">One More Thing</a>
+      <a class="toc-level-2" href="#smoother-overwatch">Smoother Overwatch</a>
+    </nav>
+      <div class="article-content">
+<p>I bought a new monitor recently: 2K at 240 Hz. It felt much smoother than 144 Hz, but I quickly ran into a problem.</p>
+<p>When I played a game in fullscreen mode and switched back to the desktop, the monitor would go black for a short time and show an OSD status popup. I often need to switch out of games, so the experience was bad enough that I had to play in borderless windowed mode.</p>
+<h2 id="clue-1-refresh-rate" tabindex="-1">Clue 1: Refresh Rate</h2>
+<p>My memory had some issues before, and the game could not stay stable at 240 fps. I decided to lower the refresh rate to 200 Hz. Then I noticed that when I used 200 Hz, the black-screen problem disappeared.</p>
+<p>At that point, I suspected the refresh rate might be so high that the bandwidth from the GPU to the monitor exceeded the DisplayPort limit. But logically, if it exceeded the limit, it should simply not work. I did not know enough about monitors then, so I did not dig further.</p>
+<h2 id="clue-2-bit-depth" tabindex="-1">Clue 2: Bit Depth</h2>
+<p>A few days later, while changing GPU driver settings, I noticed that the output color depth was 10-bit. Then I remembered that this monitor supports 10-bit output. This brought back the bandwidth suspicion, so I changed the output to 8-bit. For this kind of esports monitor, color accuracy is not the point anyway, and I do not need 10-bit just to play games.</p>
+<p>Things then developed exactly as expected. After switching to 8-bit, the black-screen problem disappeared even at 240 Hz. To verify the guess, I calculated the bandwidth requirements.</p>
+<p>At 8-bit, the GPU output bandwidth is:</p>
+<pre><code>2560 * 1440 * 240 * 8 * 3 = 21.23 Gbps</code></pre>
+<p>DisplayPort 1.4 has a maximum bandwidth of 32.4 Gbps, so this is below the limit. At 10-bit:</p>
+<pre><code>2560 * 1440 * 240 * 10 * 3 = 26.54 Gbps</code></pre>
+<p>This is still below 32.4 Gbps, so it did not explain the issue. I then decided to learn more about DisplayPort.</p>
+<p>After reading through Wikipedia, the first important detail was that DisplayPort uses 8b/10b encoding for transmission. Every 8 bits of data are encoded as 10 bits, adding 2 bits of overhead. That means the effective bandwidth is:</p>
+<pre><code>32.4 Gbps * 80% = 25.92 Gbps</code></pre>
+<p>Now the hypothesis made partial sense: 10-bit output really does exceed the effective DP bandwidth. While learning about DP, I also learned about DSC, or Display Stream Compression. In short, DSC compresses display data. I checked the monitor settings, and DSC was enabled.</p>
+<p>That means when I used 10-bit output, the GPU output bit depth inside and outside the game differed, causing the monitor to switch DSC on and off. That switch causes a short black screen.</p>
+<h2 id="one-more-thing" tabindex="-1">One More Thing</h2>
+<p>The calculation above is still wrong. The English Wikipedia page for DisplayPort lists bandwidth requirements for many resolutions and refresh rates, but the numbers did not match mine. The page notes that the calculation includes CVT-RB v2, so I learned about that as well.</p>
+<p>In simple terms, a monitor does not update all pixels at once. It scans line by line. To avoid interference, the actual scan width and height are larger than the visible resolution. The actual timing values are defined by VESA standards and differ by resolution and refresh rate.</p>
+<p>VESA provides a <a href="https://tomverbeure.github.io/video_timings_calculator">calculator</a>. For my 2K at 240 Hz case, the actual scan width is 2640 and the actual scan height is 1619. Therefore, the 8-bit bandwidth is actually:</p>
+<pre><code>2640 * 1619 * 240 * 8 * 3 = 24.62 Gbps</code></pre>
+<p>This matches the value on Wikipedia and is already very close to the effective bandwidth limit of DP 1.4.</p>
+<h2 id="smoother-overwatch" tabindex="-1">Smoother Overwatch</h2>
+<p>Switching to 8-bit and disabling DSC makes the game noticeably smoother. DSC itself adds latency. Many sources say the impact is almost impossible to notice, but many Reddit users say the difference is obvious. For competitive players, DSC should be disabled.</p>
+      </div>
+    </div>
+    <footer class="article-footer">
+      <a rel="prev" href="/en/posts/datafusion-source-code-part0/"><span>Previous</span>DataFusion Source Code, Part 0</a>
+      <a rel="next" href="/en/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/"><span>Next</span>Paper Reading: Filter Representation in Vectorized Query Execution</a>
+    </footer>
+  </article>
+  </main>
+</body>
+</html>

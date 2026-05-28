@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MIT 6.824 2022 Lab 2: Raft - Yang Cen</title>
+  <meta name="description" content="Notes from redoing MIT 6.824 Lab 2, covering Raft elections, log replication, persistence, log compaction, and common edge cases in the lab tests.">
+  <meta property="og:title" content="MIT 6.824 2022 Lab 2: Raft - Yang Cen">
+  <meta property="og:description" content="Notes from redoing MIT 6.824 Lab 2, covering Raft elections, log replication, persistence, log compaction, and common edge cases in the lab tests.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bubblecal.github.io/en/posts/824-lab2/">
+  <link rel="canonical" href="https://bubblecal.github.io/en/posts/824-lab2/">
+  <link rel="alternate" hreflang="zh-CN" href="https://bubblecal.github.io/zh/posts/824-lab2/">
+  <link rel="alternate" hreflang="en" href="https://bubblecal.github.io/en/posts/824-lab2/">
+  <link rel="alternate" type="application/rss+xml" title="Yang Cen" href="/en/feed.xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body class="article" data-lang="en">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/en/" aria-label="Yang Cen home">
+      <span>Yang Cen</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="/en/">Latest</a>
+      <a href="/en/about/">About</a>
+      <a href="/en/archive/">Archive</a>
+      <a href="/en/feed.xml">RSS</a>
+      <a class="lang-switch" href="/zh/posts/824-lab2/" hreflang="zh-CN" data-lang-switch data-lang="zh">中文</a>
+      <button class="icon-button" type="button" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">◐</button>
+    </nav>
+  </header>
+  <main id="main">
+  <article class="article-layout">
+    <header class="article-header">
+      <a class="back-link" href="/en/">Back to latest</a>
+      <p class="article-meta">2023-01-07 · 8 min · Technology · tags: Distributed Systems, Raft, Course</p>
+      <h1>MIT 6.824 2022 Lab 2: Raft</h1>
+      <p>Notes from redoing MIT 6.824 Lab 2, covering Raft elections, log replication, persistence, log compaction, and common edge cases in the lab tests.</p>
+    </header>
+    <div class="article-body-shell">
+      <nav class="toc" aria-label="Table of contents">
+      <h2>On this page</h2>
+      <a class="toc-level-1" href="#mit-6-824-lab-2-raft">MIT 6.824 Lab 2: Raft</a>
+      <a class="toc-level-2" href="#lab-2a-elections">Lab 2A: Elections</a>
+      <a class="toc-level-2" href="#lab-2b-log-replication">Lab 2B: Log Replication</a>
+      <a class="toc-level-2" href="#lab-2c-persistence">Lab 2C: Persistence</a>
+      <a class="toc-level-2" href="#lab-2d-log-compaction">Lab 2D: Log Compaction</a>
+    </nav>
+      <div class="article-content">
+<h1 id="mit-6-824-lab-2-raft" tabindex="-1">MIT 6.824 Lab 2: Raft</h1>
+<p>I recently wanted to redo 6.824 and see whether it would feel easier now. The last time I did it was in my sophomore year, and I remember almost nothing about the old code. It was probably not very good anyway. Lab 1, MapReduce, is not too difficult, so I skipped it this time and started directly from Lab 2.</p>
+<p>Following the course requirements, I will not share implementation code here. If you run into problems, feel free to contact me and discuss.</p>
+<p>One small complaint: the course suggests not using time.Ticker, but I think time.Sleep is easier to get wrong. If you have written Go before, I suggest ignoring some of the language-specific advice from the course.</p>
+<h2 id="lab-2a-elections" tabindex="-1">Lab 2A: Elections</h2>
+<p>The goal of 2A is to implement Raft elections:</p>
+<ul>
+<li>Implement RequestVote.</li>
+<li>Add AppendEntries, but not the full behavior from the paper yet.</li>
+<li>Implement role transitions among Follower, Candidate, and Leader.</li>
+<li>Implement the election logic.</li>
+</ul>
+<h3 id="triggering-an-election" tabindex="-1">Triggering an Election</h3>
+<p>An election is triggered when a node is a follower and does not receive a valid RPC request within ElectionTimeout. After triggering an election, it becomes a candidate and repeatedly runs elections. Each election should be separated by ElectionTimeout.</p>
+<p>ElectionTimeout is not a fixed value. In the paper, it is 150 ms to 300 ms. In this lab, it needs to be larger. A reasonable range is around 650 ms to 900 ms.</p>
+<h3 id="election-flow" tabindex="-1">Election Flow</h3>
+<p>When a node starts an election:</p>
+<ol>
+<li>It becomes a candidate, increments the term, and votes for itself.</li>
+<li>It sends RequestVote to all other nodes.</li>
+<li>If it gets a majority of votes, it becomes leader.</li>
+</ol>
+<p>If it discovers that another node has a larger term during the election, it gives up and becomes a follower.</p>
+<p>Without optimization, elections can take too long when some nodes have network failures. Nodes may vote for one another in turns and no one wins. Implementation details that matter:</p>
+<ul>
+<li>Requests must be sent concurrently.</li>
+<li>There is no need to wait for all RPCs to return.</li>
+<li>If a majority is already reached, the election can finish immediately.</li>
+<li>If it is already impossible to get a majority, it can also stop early.</li>
+</ul>
+<h3 id="heartbeats" tabindex="-1">Heartbeats</h3>
+<p>Once a leader exists, it must send heartbeats so followers do not start new elections. The heartbeat interval should be much smaller than ElectionTimeout. The lab tests limit heartbeat frequency to at most 10 times per second, so 100 ms is a natural interval.</p>
+<p>Leader heartbeat sending should be optimized in the same way as elections. It should not wait synchronously for all RPCs to return. If one node is offline, a heartbeat round would otherwise take too long and followers may start elections.</p>
+<h2 id="lab-2b-log-replication" tabindex="-1">Lab 2B: Log Replication</h2>
+<p>Lab 2B implements log replication and handles log consistency when nodes go offline, come back, or the cluster changes leader. This stage requires a complete AppendEntries implementation and leader-side log replication logic. It is harder than 2A, although the amount of code is not large. The key is to understand several Raft concepts.</p>
+<h3 id="commit-and-apply" tabindex="-1">Commit and Apply</h3>
+<p>The log replication process is roughly:</p>
+<ul>
+<li>When the leader receives a write request, it first appends the log entry to its own logs.</li>
+<li>The leader tracks the largest replicated index on each node as matchIndex.</li>
+<li>The leader also tracks the next log index to send to each node as nextIndex.</li>
+<li>On every heartbeat, the leader sends logs starting at nextIndex[id] to each follower.</li>
+<li>When a majority of nodes have received a log entry, that entry can be committed, and the leader updates commitIndex.</li>
+<li>Once a log is committed, it can be applied.</li>
+</ul>
+<p>Important details:</p>
+<ul>
+<li>It may look like nextIndex is always matchIndex + 1, and in most cases it is. But when a leader is just elected, this condition may not hold. matchIndex is the maximum log index known to be replicated successfully, while nextIndex is the guessed first missing log index on that follower.</li>
+<li>nextIndex is a guess. If the guess is wrong, the follower rejects the AppendEntries request. The leader then needs to adjust nextIndex. Simply doing nextIndex -= 1 may not pass the tests. A simple algorithm that decreases it faster helps find the matching point sooner.</li>
+<li>Commit and apply are independent execution flows. commitIndex is the maximum log index that can be applied. Each node can use a goroutine to compare lastApplied and commitIndex and decide whether to apply logs.</li>
+</ul>
+<p>#### Edge Case</p>
+<p>Consider a case where S1 is leader in term 1, writes X, later writes Y, then observes that S3 has a larger term and becomes follower. Because S1 has longer logs, it may become leader again and replicate Y to followers. Since Y was not written in S1&#39;s current term, S1 cannot commit Y directly.</p>
+<p>To handle this case, when a node becomes leader, it should write an empty log entry so earlier logs can be committed correctly. In this lab, tests check command types and indexes, so writing an empty command directly is not convenient. You can ignore this case for the lab or use a more complicated test-specific workaround.</p>
+<p>In the lab, apply means sending the command into applyCh. Tests read commands from applyCh to determine whether logs were replicated correctly.</p>
+<h3 id="follower-log-replication" tabindex="-1">Follower Log Replication</h3>
+<p>When a follower receives AppendEntries:</p>
+<ul>
+<li>It checks whether prevLogIndex and prevLogTerm match its own log.</li>
+<li>It writes the request&#39;s logs into its own logs.</li>
+<li>It updates commitIndex and applies logs.</li>
+</ul>
+<p>When writing logs, the follower starts from prevLogIndex + 1. This differs slightly from the paper because in the lab we can ignore log-write cost and simplify by writing directly from prevLogIndex + 1. A mature implementation would check whether existing logs from that position match the request and only overwrite from the first mismatch.</p>
+<p>commitIndex is updated from leaderCommit in the request. This value may be smaller than the starting index of the logs in this request. In other words, a log entry may require at least two AppendEntries RPCs before it is committed: one to replicate the log, and another to update commitIndex.</p>
+<p>When leaders change or nodes go offline and come back, a far-behind node may receive a request whose leaderCommit is no smaller than the replicated log index, because commit requires only that a majority has replicated the log.</p>
+<h3 id="log-matching-property" tabindex="-1">Log Matching Property</h3>
+<p>The log matching property says: if two logs on different nodes have the same index and term, then they are the same log entry, and all previous log entries are also the same.</p>
+<p>This property is the correctness guarantee behind the replication mechanism. The key is that followers check prevLogIndex and prevLogTerm. A proof by contradiction:</p>
+<ol>
+<li>Assume nodes A and B have one log entry with the same index and term but different content. Let that be the first such log.</li>
+<li>The same term means this log was replicated by the same leader.</li>
+<li>When the leader replicated to A and B, prevLogIndex and prevLogTerm both matched. Therefore the leader knew that the next log to copy was its own logs[prevLogIndex + 1].</li>
+<li>That contradicts the assumption that A and B have different entries at that index.</li>
+</ol>
+<h2 id="lab-2c-persistence" tabindex="-1">Lab 2C: Persistence</h2>
+<p>The Lab 2C tests are much stronger. Persistence itself does not require much code and has no particularly tricky part. More often, 2C exposes incomplete details from 2A and 2B. Common mistakes:</p>
+<ul>
+<li>A follower should not suppress elections after receiving just any request within ElectionTimeout. It should remain follower only after receiving a valid request.</li>
+<li>votedFor means the node voted for someone in the current term. When the term changes, this value must be reset.</li>
+<li>One voting condition is that the follower&#39;s log must not be newer than the candidate&#39;s log. Compare the term of the last log first. A larger term is newer. If terms are equal, the longer log is newer.</li>
+<li>A leader can only commit logs from its own term.</li>
+</ul>
+<p>You can repeat a test several times with:</p>
+<pre><code class="language-shell">go test -failfast -race -timeout=15m -count 5 -run [TestCase] &gt; test.log</code></pre>
+<p>The command stops after the requested count or fails early when a test fails.</p>
+<h2 id="lab-2d-log-compaction" tabindex="-1">Lab 2D: Log Compaction</h2>
+<p>Lab 2D implements log compaction. Raft uses snapshots for log compaction.</p>
+<h3 id="trim-log" tabindex="-1">Trim Log</h3>
+<p>When creating a snapshot at index i, all logs before i should be discarded. The Raft paper says log indexes start from 1. Initialization can keep an empty log in the slice. For snapshots, one option is to put log i at the front of the log slice so the metadata of log_i is preserved.</p>
+<p>All indexes in Raft, such as commitIndex, lastApplied, and nextIndex, are logical indexes, not direct slice indexes. After snapshotting, we need to record the snapshot log index. Later, when accessing a logical index, convert it to a physical slice index:</p>
+<pre><code class="language-golang">idx = index - snapshotIndex</code></pre>
+<p>Each time a snapshot is created, snapshotIndex is updated to the snapshot index.</p>
+<p>The applyCh provided by the lab is an unbuffered channel. If the apply goroutine keeps holding the lock while applying a batch of data, triggering Snapshot can deadlock with the Snapshot method. Therefore, the apply process should use select to attempt applying. If it fails, it should release the lock and retry later.</p>
+<p>This change affects the Lab 2B tests. When multiple servers are applying, apply failures become very likely and apply efficiency can become too low. Therefore, use context or a timer so apply fails only after a timeout. Do not use a default case directly.</p>
+      </div>
+    </div>
+    <footer class="article-footer">
+      <span></span>
+      <a rel="next" href="/en/posts/swap-cache-mmap/"><span>Next</span>Swap, Cache, and mmap</a>
+    </footer>
+  </article>
+  </main>
+</body>
+</html>

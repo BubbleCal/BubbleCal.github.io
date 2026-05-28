@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+<channel>
+  <title>Yang Cen</title>
+  <link>https://bubblecal.github.io/zh/</link>
+  <description>关于向量查询、全文检索、查询引擎和分布式系统的技术笔记。</description>
+  <language>zh-CN</language>
+  <item>
+    <title>4bit PQ reading &amp; implementing</title>
+    <link>https://bubblecal.github.io/zh/posts/4bitpqreadingimplementing/</link>
+    <guid>https://bubblecal.github.io/zh/posts/4bitpqreadingimplementing/</guid>
+    <pubDate>Fri, 29 Nov 2024 06:26:43 GMT</pubDate>
+    <description>最近在做 4bit PQ(Accelerated Nearest Neighbor Search with Quick ADC) , 直觉上的话 4bit PQ 能比 8bit PQ 快很多，不过到完整实现这个东西后才发现坑还挺大的…… Product Quantization 从 PQ 说起，PQ...</description>
+  </item>
+  <item>
+    <title>Paper Reading: VBASE: Relational Queries via Relaxed Monotonicity</title>
+    <link>https://bubblecal.github.io/zh/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/</link>
+    <guid>https://bubblecal.github.io/zh/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/</guid>
+    <pubDate>Sun, 10 Dec 2023 12:56:07 GMT</pubDate>
+    <description>TL;DR这篇论文首先是引入了 relaxed monotonicity 的概念，然后基于对向量索引的 relaxed monotonicity 性质的观察：ANN 的检索过程中会有两个阶段，第一阶段中会快速向目标向量靠近，第二阶段向量整体上会逐渐远离目标向量。论文中给出了判定查询已经进入第二阶段的</description>
+  </item>
+  <item>
+    <title>Paper Reading: Filter Representation in Vectorized Query Execution</title>
+    <link>https://bubblecal.github.io/zh/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/</link>
+    <guid>https://bubblecal.github.io/zh/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/</guid>
+    <pubDate>Sat, 02 Dec 2023 08:06:08 GMT</pubDate>
+    <description>目前向量化执行引擎在执行过滤操作时会有这样一些策略：用一个 bitset 来标记哪些数据是被过滤选中的用一个 vector 存储被命中的数据的下标将命中的数据复制后传递到下一个算子这篇文章主要讨论了前两种，文章里称之为 Bitmap(BM) 和 Seleteced Vector (SV)。第三种策略</description>
+  </item>
+  <item>
+    <title>守望先锋入门：短暂黑屏现象背后的显示器原理</title>
+    <link>https://bubblecal.github.io/zh/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/</link>
+    <guid>https://bubblecal.github.io/zh/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/</guid>
+    <pubDate>Mon, 13 Nov 2023 05:09:19 GMT</pubDate>
+    <description>前段时间购置了一个显示器，规格是 2K@240Hz，用起来之后感觉比 144Hz 流畅很多，但是很快我就发现这个显示器有一个问题。 当我进行全屏游戏的时候，如果这个时候切回到桌面，显示器会短暂黑屏一段时间，并且弹出 OSD 显示显示器目前的状态。因为我需要经常切出游戏做别的事情，这个黑屏带来的体验太...</description>
+  </item>
+  <item>
+    <title>datafusion 源码 Part0</title>
+    <link>https://bubblecal.github.io/zh/posts/datafusion-source-code-part0/</link>
+    <guid>https://bubblecal.github.io/zh/posts/datafusion-source-code-part0/</guid>
+    <pubDate>Fri, 26 May 2023 09:15:40 GMT</pubDate>
+    <description>datafusion DataFrame DataFrame 是最终结果数据集的一个视图，并不持有数据，也没有执行。当调用一些 action 方法后才会开始真正执行查询。 下面以 collect() 方法为例，过一下整个执行的流程： pub async fn collect(self) -&gt; Res...</description>
+  </item>
+  <item>
+    <title>Swap，Cache 与 mmap</title>
+    <link>https://bubblecal.github.io/zh/posts/swap-cache-mmap/</link>
+    <guid>https://bubblecal.github.io/zh/posts/swap-cache-mmap/</guid>
+    <pubDate>Thu, 23 Feb 2023 14:15:36 GMT</pubDate>
+    <description>Linux 的 swap，cache 与 mmap众所周知，Milvus 需要把数据全部加载到内存中后才能执行查询。这会对 Milvus 中的查询节点有很高的内存需求，但对于离线场景，用户对查询性能不敏感，可以接受性能降级。这里常规的解决方案是做一个 buffer pool，查询时按需地的将数据加载</description>
+  </item>
+  <item>
+    <title>MIT 6.824 2022 Lab2 Raft</title>
+    <link>https://bubblecal.github.io/zh/posts/824-lab2/</link>
+    <guid>https://bubblecal.github.io/zh/posts/824-lab2/</guid>
+    <pubDate>Sat, 07 Jan 2023 05:47:54 GMT</pubDate>
+    <description>MIT 6.824 Lab2 Raft最近突然想再刷一下 6.824，想试试自己现在做会不会容易得多。上次做已经是大二的时候了，对之前的代码已经毫无记忆了（而且也写得不咋样）。因为 Lab1 没什么难度，我这次就跳过了，直接从 Lab2 开始。Lab2 是实现 Raft，在继续看下面的内容之前，你至</description>
+  </item>
+</channel>
+</rss>

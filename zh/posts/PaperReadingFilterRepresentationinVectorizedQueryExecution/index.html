@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paper Reading: Filter Representation in Vectorized Query Execution - Yang Cen</title>
+  <meta name="description" content="目前向量化执行引擎在执行过滤操作时会有这样一些策略：用一个 bitset 来标记哪些数据是被过滤选中的用一个 vector 存储被命中的数据的下标将命中的数据复制后传递到下一个算子这篇文章主要讨论了前两种，文章里称之为 Bitmap(BM) 和 Seleteced Vector (SV)。第三种策略">
+  <meta property="og:title" content="Paper Reading: Filter Representation in Vectorized Query Execution - Yang Cen">
+  <meta property="og:description" content="目前向量化执行引擎在执行过滤操作时会有这样一些策略：用一个 bitset 来标记哪些数据是被过滤选中的用一个 vector 存储被命中的数据的下标将命中的数据复制后传递到下一个算子这篇文章主要讨论了前两种，文章里称之为 Bitmap(BM) 和 Seleteced Vector (SV)。第三种策略">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bubblecal.github.io/zh/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/">
+  <link rel="canonical" href="https://bubblecal.github.io/zh/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/">
+  <link rel="alternate" hreflang="zh-CN" href="https://bubblecal.github.io/zh/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/">
+  <link rel="alternate" hreflang="en" href="https://bubblecal.github.io/en/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/">
+  <link rel="alternate" type="application/rss+xml" title="Yang Cen" href="/zh/feed.xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body class="article" data-lang="zh">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <a class="brand" href="/zh/" aria-label="Yang Cen home">
+      <span>Yang Cen</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="/zh/">Latest</a>
+      <a href="/zh/about/">About</a>
+      <a href="/zh/archive/">Archive</a>
+      <a href="/zh/feed.xml">RSS</a>
+      <a class="lang-switch" href="/en/posts/PaperReadingFilterRepresentationinVectorizedQueryExecution/" hreflang="en" data-lang-switch data-lang="en">EN</a>
+      <button class="icon-button" type="button" data-theme-toggle aria-label="Toggle theme" title="Toggle theme">◐</button>
+    </nav>
+  </header>
+  <main id="main">
+  <article class="article-layout">
+    <header class="article-header">
+      <a class="back-link" href="/zh/">Back to latest</a>
+      <p class="article-meta">2023-12-02 · 6 min · Paper Reading, Technology · tags: Query Engine, Vectorized Execution, Bitmap</p>
+      <h1>Paper Reading: Filter Representation in Vectorized Query Execution</h1>
+      <p>目前向量化执行引擎在执行过滤操作时会有这样一些策略：用一个 bitset 来标记哪些数据是被过滤选中的用一个 vector 存储被命中的数据的下标将命中的数据复制后传递到下一个算子这篇文章主要讨论了前两种，文章里称之为 Bitmap(BM) 和 Seleteced Vector (SV)。第三种策略</p>
+    </header>
+    <div class="article-body-shell">
+      <nav class="toc" aria-label="Table of contents">
+      <h2>On this page</h2>
+      <a class="toc-level-2" href="#filter-representation">Filter Representation</a>
+      <a class="toc-level-2" href="#%E4%BC%B0%E7%AE%97%E6%A8%A1%E5%9E%8B">估算模型</a>
+      <a class="toc-level-2" href="#%E6%AF%94%E8%BE%83%E5%9C%BA%E6%99%AF">比较场景</a>
+      <a class="toc-level-2" href="#tpc-h-%E6%B5%8B%E8%AF%95">TPC-H 测试</a>
+      <a class="toc-level-2" href="#%E7%BB%93%E8%AE%BA">结论</a>
+    </nav>
+      <div class="article-content">
+<p>目前向量化执行引擎在执行过滤操作时会有这样一些策略：</p>
+<ol>
+<li>用一个 bitset 来标记哪些数据是被过滤选中的</li>
+<li>用一个 vector 存储被命中的数据的下标</li>
+<li>将命中的数据复制后传递到下一个算子</li>
+</ol>
+<p>这篇文章主要讨论了前两种，文章里称之为 Bitmap(BM) 和 Selection Vector (SV)。第三种策略也有系统用，但论文中没有讨论，目前我看到的是 datafusion 用了第三种策略，最后也会讨论一下。</p>
+<h2 id="filter-representation" tabindex="-1">Filter Representation</h2>
+<p>在 BM 和 SV 中，主要有 3 种不同的策略：</p>
+<ul>
+<li>BMFull：总是对所有数据处理，未选中的数据的值未定义，优势是能充分发挥向量化的优势</li>
+<li>BMPartial：只对选中的数据进行处理，无法利用向量化，依然需要遍历所有下标</li>
+<li>SVPartial：只需要遍历选中的下标，无法利用向量化</li>
+</ul>
+<p>文章中的 <code>Manual</code> 后缀表示手动做 SIMD 优化（利用 AVX512）而不是依赖编译期优化。其中 SVManual 可以一定程度上利用到向量化</p>
+<h2 id="%E4%BC%B0%E7%AE%97%E6%A8%A1%E5%9E%8B" tabindex="-1">估算模型</h2>
+<p>为了评估一个策略的计算耗时，可以用下面的公式：</p>
+<p class='katex-block'><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>𝑅</mi><mo>=</mo><mi>𝑁</mi><mo>×</mo><mo stretchy="false">(</mo><mi>𝐼</mi><mo>+</mo><mi>𝑂</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">𝑅 = 𝑁 × (𝐼 + 𝑂) 
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.00773em;">R</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.76666em;vertical-align:-0.08333em;"></span><span class="mord mathnormal" style="margin-right:0.10903em;">N</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07847em;">I</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.02778em;">O</span><span class="mclose">)</span></span></span></span></span></p>
+<p>其中 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi></mrow><annotation encoding="application/x-tex">N</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.10903em;">N</span></span></span></span> 是数据行数，<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>I</mi></mrow><annotation encoding="application/x-tex">I</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.07847em;">I</span></span></span></span> 是迭代的单位代价，<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi></mrow><annotation encoding="application/x-tex">O</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.02778em;">O</span></span></span></span> 是处理数据的单位代价，<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi></mrow><annotation encoding="application/x-tex">R</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.00773em;">R</span></span></span></span> 为评估耗时。</p>
+<p>不同策略的开销也就是受这 3 个变量的影响，其中 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>I</mi></mrow><annotation encoding="application/x-tex">I</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.07847em;">I</span></span></span></span> 对于给定的策略来说都是定值，而 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi></mrow><annotation encoding="application/x-tex">O</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.02778em;">O</span></span></span></span> 和 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi></mrow><annotation encoding="application/x-tex">N</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.10903em;">N</span></span></span></span> 取决于过滤的命中率，其中 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi></mrow><annotation encoding="application/x-tex">O</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.02778em;">O</span></span></span></span> 还会很大程度上受处理的数据类型影响。</p>
+<p>BMFull 比较特殊，它的 3 个变量都是定值。从上面也可以看出来，我们可以在不同过滤率下去比较不同策略。</p>
+<h2 id="%E6%AF%94%E8%BE%83%E5%9C%BA%E6%99%AF" tabindex="-1">比较场景</h2>
+<p>文章中定义了两种原语：</p>
+<ul>
+<li>Update：会更新命中集合的操作，也就是过滤操作，例如 <code>where a &lt; b</code></li>
+<li>Map：会更改数据的操作，例如 <code>select a + b</code></li>
+</ul>
+<p>主要比较这两类原语的性能。</p>
+<h3 id="%E6%97%A0%E6%95%B0%E6%8D%AE%E5%B9%B6%E8%A1%8C%E5%9C%BA%E6%99%AF" tabindex="-1">无数据并行场景</h3>
+<p>对于字符串处理，整数除法这样的场景，CPU 无法向量化处理多条数据，这种场景下数据处理代价会更高。</p>
+<p><img src="/upload/2023/12/image.png" alt="image" /></p>
+<p>可以看到 BMPartial 和 SVPartial 的性能是很接近的，前者主要会有一个更高的遍历开销，所以 SVPartial 整体上会更优一些。在这种场景下，SVPartial 是最优策略。</p>
+<h3 id="%E4%BD%8E%E6%95%88%E6%95%B0%E6%8D%AE%E5%B9%B6%E8%A1%8C%E5%9C%BA%E6%99%AF" tabindex="-1">低效数据并行场景</h3>
+<p>对于逻辑与或运算这样的场景，SISD 会因为短路而执行更少的代码，因此 SIMD 的开销不一定会比 SISD 更低。</p>
+<p><img src="/upload/2023/12/image-1701504940143.png" alt="image-1701504940143" /></p>
+<p>可以看到整体上依然是 SVPartial 最优，BMFull 在高命中率下才会有一定优势（Map原语下）。</p>
+<h3 id="%E6%95%B0%E6%8D%AE%E5%B9%B6%E8%A1%8C%E5%9C%BA%E6%99%AF" tabindex="-1">数据并行场景</h3>
+<p>对于普通的数值运算场景，SIMD 能够充分发挥。</p>
+<p><img src="/upload/2023/12/image-1701505563620.png" alt="image-1701505563620" /></p>
+<p>此时 Partial 类策略只在低命中率（&lt; 0.2）下会有优势，更高的命中率下 BMFull 会因为向量化而具有优势。</p>
+<p>文章中尝试了数据运算的指令数量对这个结果的影响：<br />
+<img src="/upload/2023/12/image-1701505711380.png" alt="image-1701505711380" /></p>
+<p>可以看到命中率阈值整体上很稳定，也就是 0.2 左右。</p>
+<h2 id="tpc-h-%E6%B5%8B%E8%AF%95" tabindex="-1">TPC-H 测试</h2>
+<p>文章提出了一种混合策略：对于高命中率（0.2 以上）使用 BMFull 策略（或 BMFullManual），对低命中率使用 SVManual 策略。并且使用这种策略和其它策略进行对比测试。</p>
+<p>先放一个测试结果：<br />
+<img src="/upload/2023/12/image-1701506019343.png" alt="image-1701506019343" /></p>
+<h3 id="q1-%E9%AB%98%E5%91%BD%E4%B8%AD%E7%8E%87%E6%95%B0%E6%8D%AE%E5%B9%B6%E8%A1%8C" tabindex="-1">Q1 高命中率数据并行</h3>
+<p>这个测试中会有一个高命中率（0.95）的过滤，然后跟随一个有副作用（意味着无法数据并行）聚合操作。</p>
+<p>在过滤阶段，BMFull 比 SVPartial 快 1.6x，比 SVManual 快 1.3x。但因为查询的耗时主要在最后的聚合操作，所以最终耗时接近。需要注意的是 BMPartial 和 BMFull 在最后的聚合操作上是等价的，但 BMFull 花了更多时间，这是因为 BMFull 在过滤阶段使用 AVX512 导致了 CPU 降频。</p>
+<h3 id="q6-%E6%B7%B7%E5%90%88%E5%91%BD%E4%B8%AD%E7%8E%87%E6%95%B0%E6%8D%AE%E5%B9%B6%E8%A1%8C" tabindex="-1">Q6 混合命中率数据并行</h3>
+<p>这个测试中第二个过滤会让命中率降低到 0.15，对于混合策略来说会触发策略切换，因此可以很好地比较混合的性能。</p>
+<p>从测试结果中可以到，混合策略比单一策略都要快。但其中 BMFull + SVManual 比 BMFull + BMPartial 要慢（即使 SVManual 比 BMPartial 更优），这是因为 bitmap 转 selection vector 会有转换开销。</p>
+<p>在这个测试中，因为命中率最终很低，所以查询耗时主要集中在前面的 SLDP 运算，AVX512 带来的降频对整体查询性能影响不大。</p>
+<h3 id="q4-%E5%9C%B0%E5%91%BD%E4%B8%AD%E7%8E%87%E4%BD%8E%E6%95%B0%E6%8D%AE%E5%B9%B6%E8%A1%8C" tabindex="-1">Q4 地命中率低数据并行</h3>
+<p>这个测试中命中率也会很低，并且也不能充分利用 SIMD，这种情况下 BMFull + SVPartial 是最优策略，但和 BMFull + BMPartial 差距不大。</p>
+<h2 id="%E7%BB%93%E8%AE%BA" tabindex="-1">结论</h2>
+<p>从这个文章的结论来看的话，采用混合策略可以带来大概 30% 的性能提升。而在设计策略的时候应该充分考虑到不同类型查询的影响（AVX512 带来的降频问题）。就我个人来说的话我肯定会选 BMFull + BMPartial 的策略，实现上最简单并且在多数情况下是最优策略。</p>
+<p>最后说一下文章开头提到的复制数据的策略，用上面相同的方法去分析，这种策略应该在命中率比较低，并且数据并行的情况下会比 SVPartial 快一些，虽然多了一个数据复制的开销，但是更能充分利用向量化，毕竟 datafusion 也没有很慢。但是对于高命中率的过滤来说应该性能会比较严重，处理字符串这样的数据也会比较糟糕。</p>
+<p>最不舒服的还是这种策略无法和 bitmap，selection vector 进行转换（除非你的数据额外再带上一个下标列，但又会增加开销了），没有什么灵活性和上升空间。</p>
+
+      </div>
+    </div>
+    <footer class="article-footer">
+      <a rel="prev" href="/zh/posts/shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li/"><span>Previous</span>守望先锋入门：短暂黑屏现象背后的显示器原理</a>
+      <a rel="next" href="/zh/posts/paperreadingvbaseunifyingonlinevectorsimilaritysearchandrelationalqueriesviarelaxedmonotonicity/"><span>Next</span>Paper Reading: VBASE: Relational Queries via Relaxed Monotonicity</a>
+    </footer>
+  </article>
+  </main>
+</body>
+</html>
