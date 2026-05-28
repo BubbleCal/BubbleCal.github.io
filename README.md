@@ -1,10 +1,6 @@
 # yah01-blog
 
-Static personal blog generated from the Sonic backup at:
-
-```sh
-/Users/yang/Documents/sonic-blog-backups/20260528-215807
-```
+Static personal blog generated from a Sonic backup.
 
 Generate the static pages:
 
