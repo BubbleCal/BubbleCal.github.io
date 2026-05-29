@@ -201,18 +201,16 @@ const quickAdcFigures = {
   ]
 };
 
-const quickAdcBenchmarkFigure = {
+const quickAdcPaperReference = {
   zh: {
-    src: "/assets/figures/4bit-pq-benchmark-summary.svg",
-    alt: "Quick ADC paper benchmark headline summary",
-    caption:
-      '重画的论文 headline benchmark 摘要，不是论文截图：<a href="https://arxiv.org/abs/1704.07355">Quick ADC 论文</a>报告了相对 ADC 约 3-6x 的加速，并在 SIFT1B 128-bit codes 上达到 Recall@100 0.94 / 3.4 ms。'
+    title: "原论文 benchmark 图",
+    body:
+      '论文原图没有明确的可复用授权，所以这里不直接复制截图。可以直接看 <a href="https://arxiv.org/pdf/1704.07355">Quick ADC PDF</a> 里的 Figure 5；论文摘要中报告了相对 ADC 约 3-6x 的加速，并在 SIFT1B 128-bit codes 上达到 Recall@100 0.94 / 3.4 ms。'
   },
   en: {
-    src: "/assets/figures/4bit-pq-benchmark-summary.svg",
-    alt: "Quick ADC paper benchmark headline summary",
-    caption:
-      'A redrawn headline benchmark summary, not a copied paper figure: the <a href="https://arxiv.org/abs/1704.07355">Quick ADC paper</a> reports roughly 3-6x speedup over ADC and Recall@100 0.94 / 3.4 ms on SIFT1B with 128-bit codes.'
+    title: "Original paper benchmark",
+    body:
+      'The original paper figures do not have an explicit reuse license, so this page does not copy screenshots directly. See Figure 5 in the <a href="https://arxiv.org/pdf/1704.07355">Quick ADC PDF</a>; the abstract reports roughly 3-6x speedup over ADC and Recall@100 0.94 / 3.4 ms on SIFT1B with 128-bit codes.'
   }
 };
 
@@ -448,6 +446,13 @@ function articleFigure({ src, alt, caption }) {
 </figure>`;
 }
 
+function paperReference({ title, body }) {
+  return `<aside class="paper-reference">
+  <h3>${escapeHtml(title)}</h3>
+  <p>${body}</p>
+</aside>`;
+}
+
 function insertAfterHeading(html, headingId, addition) {
   const pattern = new RegExp(
     `(<h[1-3]\\s+[^>]*id=["']${escapeRegExp(headingId)}["'][^>]*>[\\s\\S]*?<\\/h[1-3]>)`
@@ -468,7 +473,7 @@ function enhancePostContent(post, lang) {
     formatContent = insertAfterHeading(formatContent, figure.headingId, articleFigure(figure));
   }
 
-  formatContent = `${formatContent}\n${articleFigure(quickAdcBenchmarkFigure[lang])}`;
+  formatContent = `${formatContent}\n${paperReference(quickAdcPaperReference[lang])}`;
   return {
     ...post,
     heroImage: post.heroImage || quickAdcFigures[lang][0].src,

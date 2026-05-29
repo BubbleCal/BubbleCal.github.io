@@ -121,10 +121,10 @@ for j in 0..M {
 <p>我又回去看了一下 paper，看看作者怎么做的，而作者的做法狠狠的让我感叹学术和实现之间的巨大 gap……作者的方法是先做个爆搜，算一下比如 top200，然后拿最远的那个距离做 max。后面做 add 的时候做  saturating add，反正如果你搜 top100，会成为最终结果的那部份不会溢出。这个方法过于不实际了，反正我没用……</p>
 <p>我最后放弃了把结果一直存 u8x16 里，还是写内存了。因为 4bit 是把两个块压到一个 byte 里，我需要在 u8x16 中存储两个块加起来的结果，所以其实我只需要求 distance table 中相邻两个块的和的最大值，作为 max 去做 scalar quantization 就可以了。 写内存的次数也可以减少一半，所以其实性能依然不错，最主要的是这样 recall loss 很小。</p>
 
-<figure class="article-figure">
-  <img src="/assets/figures/4bit-pq-benchmark-summary.svg" alt="Quick ADC paper benchmark headline summary" loading="lazy" decoding="async">
-  <figcaption>重画的论文 headline benchmark 摘要，不是论文截图：<a href="https://arxiv.org/abs/1704.07355">Quick ADC 论文</a>报告了相对 ADC 约 3-6x 的加速，并在 SIFT1B 128-bit codes 上达到 Recall@100 0.94 / 3.4 ms。</figcaption>
-</figure>
+<aside class="paper-reference">
+  <h3>原论文 benchmark 图</h3>
+  <p>论文原图没有明确的可复用授权，所以这里不直接复制截图。可以直接看 <a href="https://arxiv.org/pdf/1704.07355">Quick ADC PDF</a> 里的 Figure 5；论文摘要中报告了相对 ADC 约 3-6x 的加速，并在 SIFT1B 128-bit codes 上达到 Recall@100 0.94 / 3.4 ms。</p>
+</aside>
       </div>
     </div>
     <footer class="article-footer">

@@ -114,10 +114,10 @@ for j in 0..M {
 <p>The simplest solution is to set the scalar quantization max value to the sum of the whole distance table. Unsurprisingly, this destroys recall.</p>
 <p>I went back to the paper to see what the authors did, and the answer is a good reminder of the gap between papers and production implementations. They first run a brute-force search, for example top-200, then use the farthest distance as the max value. During accumulation they use saturating add. If the query is top-100, the results that can actually make it into the final answer should not overflow. This is too impractical for my use case, so I did not use it.</p>
 <p>In the end, I gave up on keeping the result in u8x16 all the way through and wrote intermediate results back to memory. Because 4-bit PQ packs two blocks into one byte, I needed to store the sum of two blocks in u8x16. That means I only need the maximum sum of neighboring blocks in the distance table as the max value for scalar quantization. This halves the number of memory writes, so performance is still good, and more importantly, recall loss is small.</p>
-<figure class="article-figure">
-  <img src="/assets/figures/4bit-pq-benchmark-summary.svg" alt="Quick ADC paper benchmark headline summary" loading="lazy" decoding="async">
-  <figcaption>A redrawn headline benchmark summary, not a copied paper figure: the <a href="https://arxiv.org/abs/1704.07355">Quick ADC paper</a> reports roughly 3-6x speedup over ADC and Recall@100 0.94 / 3.4 ms on SIFT1B with 128-bit codes.</figcaption>
-</figure>
+<aside class="paper-reference">
+  <h3>Original paper benchmark</h3>
+  <p>The original paper figures do not have an explicit reuse license, so this page does not copy screenshots directly. See Figure 5 in the <a href="https://arxiv.org/pdf/1704.07355">Quick ADC PDF</a>; the abstract reports roughly 3-6x speedup over ADC and Recall@100 0.94 / 3.4 ms on SIFT1B with 128-bit codes.</p>
+</aside>
       </div>
     </div>
     <footer class="article-footer">
