@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" role="img" aria-labelledby="title desc">
+  <title id="title">Row-major versus transposed PQ code layout</title>
+  <desc id="desc">Row-major PQ codes are strided when scanning by block, while a transposed code layout makes each block stream contiguous.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#315f99"/>
+    </marker>
+    <style>
+      .bg { fill: #fbfcfa; }
+      .panel { fill: #ffffff; stroke: #d9dfda; stroke-width: 1.5; }
+      .title { font: 700 24px Inter, system-ui, sans-serif; fill: #171a18; }
+      .label { font: 700 15px Inter, system-ui, sans-serif; fill: #171a18; }
+      .small { font: 12px Inter, system-ui, sans-serif; fill: #69736e; }
+      .mono { font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #171a18; }
+      .cell { fill: #eef2ef; stroke: #d9dfda; }
+      .scan { fill: #dce7f7; stroke: #315f99; }
+      .bad { fill: #f4ded8; stroke: #9f513f; }
+      .good { fill: #dcebdd; stroke: #2e6b4e; }
+      .arrow { fill: none; stroke: #315f99; stroke-width: 2.5; marker-end: url(#arrow); }
+      .badline { fill: none; stroke: #9f513f; stroke-width: 2.2; stroke-dasharray: 5 5; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" width="960" height="520" rx="18"/>
+  <text class="title" x="40" y="54">Transposing PQ codes</text>
+  <text class="small" x="40" y="80">The same loop order is fast only if the code stream is laid out for it.</text>
+
+  <rect class="panel" x="44" y="124" width="390" height="320" rx="14"/>
+  <text class="label" x="74" y="160">Before: code[i][j]</text>
+  <text class="small" x="74" y="184">Vector-major rows. Block-first scan jumps by row stride.</text>
+  <g transform="translate(74 220)">
+    <text class="mono" x="0" y="-14">vectors</text>
+    <text class="mono" x="206" y="-14">blocks</text>
+    <g>
+      <rect class="bad" x="0" y="0" width="34" height="30" rx="4"/>
+      <rect class="cell" x="38" y="0" width="34" height="30" rx="4"/>
+      <rect class="cell" x="76" y="0" width="34" height="30" rx="4"/>
+      <rect class="cell" x="114" y="0" width="34" height="30" rx="4"/>
+      <rect class="bad" x="0" y="36" width="34" height="30" rx="4"/>
+      <rect class="cell" x="38" y="36" width="34" height="30" rx="4"/>
+      <rect class="cell" x="76" y="36" width="34" height="30" rx="4"/>
+      <rect class="cell" x="114" y="36" width="34" height="30" rx="4"/>
+      <rect class="bad" x="0" y="72" width="34" height="30" rx="4"/>
+      <rect class="cell" x="38" y="72" width="34" height="30" rx="4"/>
+      <rect class="cell" x="76" y="72" width="34" height="30" rx="4"/>
+      <rect class="cell" x="114" y="72" width="34" height="30" rx="4"/>
+      <rect class="bad" x="0" y="108" width="34" height="30" rx="4"/>
+      <rect class="cell" x="38" y="108" width="34" height="30" rx="4"/>
+      <rect class="cell" x="76" y="108" width="34" height="30" rx="4"/>
+      <rect class="cell" x="114" y="108" width="34" height="30" rx="4"/>
+    </g>
+    <path class="badline" d="M17 30 L17 36 L17 66 L17 72 L17 102 L17 108"/>
+    <text class="small" x="186" y="34">same block</text>
+    <text class="small" x="186" y="54">non-contiguous reads</text>
+  </g>
+
+  <path class="arrow" d="M450 284 C482 284 492 284 522 284"/>
+  <text class="label" x="462" y="250">transpose</text>
+
+  <rect class="panel" x="526" y="124" width="390" height="320" rx="14"/>
+  <text class="label" x="556" y="160">After: code[j][i]</text>
+  <text class="small" x="556" y="184">Block-major rows. The inner loop reads a contiguous stream.</text>
+  <g transform="translate(556 220)">
+    <text class="mono" x="0" y="-14">blocks</text>
+    <text class="mono" x="198" y="-14">vectors</text>
+    <g>
+      <rect class="good" x="0" y="0" width="34" height="30" rx="4"/>
+      <rect class="good" x="38" y="0" width="34" height="30" rx="4"/>
+      <rect class="good" x="76" y="0" width="34" height="30" rx="4"/>
+      <rect class="good" x="114" y="0" width="34" height="30" rx="4"/>
+      <rect class="cell" x="0" y="36" width="34" height="30" rx="4"/>
+      <rect class="cell" x="38" y="36" width="34" height="30" rx="4"/>
+      <rect class="cell" x="76" y="36" width="34" height="30" rx="4"/>
+      <rect class="cell" x="114" y="36" width="34" height="30" rx="4"/>
+      <rect class="cell" x="0" y="72" width="34" height="30" rx="4"/>
+      <rect class="cell" x="38" y="72" width="34" height="30" rx="4"/>
+      <rect class="cell" x="76" y="72" width="34" height="30" rx="4"/>
+      <rect class="cell" x="114" y="72" width="34" height="30" rx="4"/>
+      <rect class="cell" x="0" y="108" width="34" height="30" rx="4"/>
+      <rect class="cell" x="38" y="108" width="34" height="30" rx="4"/>
+      <rect class="cell" x="76" y="108" width="34" height="30" rx="4"/>
+      <rect class="cell" x="114" y="108" width="34" height="30" rx="4"/>
+    </g>
+    <path class="arrow" d="M0 15 L150 15"/>
+    <text class="small" x="186" y="34">same block</text>
+    <text class="small" x="186" y="54">sequential reads</text>
+    <rect class="scan" x="0" y="172" width="250" height="44" rx="10"/>
+    <text class="mono" x="16" y="200">for j in blocks { for i in vectors }</text>
+  </g>
+</svg>

@@ -37,7 +37,7 @@
   <article class="article-layout">
     <header class="article-header">
       <a class="back-link" href="/en/">Back to latest</a>
-      <p class="article-meta">2024-11-29 · 4 min · Paper Reading, Technology · tags: Vector Search, Product Quantization, SIMD</p>
+      <p class="article-meta">2024-11-29 · 5 min · Paper Reading, Technology · tags: Vector Search, Product Quantization, SIMD</p>
       <h1>4-bit PQ: Reading and Implementation Notes</h1>
       <p>Notes from implementing 4-bit product quantization: why it should be faster than 8-bit PQ, where the paper leaves implementation gaps, and what tradeoffs worked in practice.</p>
     </header>
@@ -52,6 +52,10 @@
       <div class="article-content">
 <p>I have recently been working on <a href="https://arxiv.org/abs/1704.07355">4-bit PQ, from Accelerated Nearest Neighbor Search with Quick ADC</a>. Intuitively, 4-bit PQ should be much faster than 8-bit PQ, but after implementing it end to end I found quite a few traps.</p>
 <h2 id="product-quantization" tabindex="-1">Product Quantization</h2>
+<figure class="article-figure">
+  <img src="/assets/figures/4bit-pq-pipeline.svg" alt="Product quantization encoding and distance lookup pipeline" loading="lazy" decoding="async">
+  <figcaption>PQ encoding path: split the vector into sub-vectors, train one codebook per position, then use an ADC distance table at query time.</figcaption>
+</figure>
 <p>Start with ordinary PQ. Product quantization splits a D-dimensional vector into M equal-sized sub-vectors. For each sub-vector position, it runs k-means over all vectors and produces 2^B centroids. Each original vector is then represented by the id of the nearest centroid for every sub-vector.</p>
 <p>Here B is the number of bits. It is usually 8, for a simple reason: one sub-vector code can be stored in a u8, which gives a good compression ratio. When people talk about PQ, they usually mean B = 8, which compresses D f32 values into M u8 values.</p>
 <p>At query time, to compute the distance from a query vector q to all vectors in the dataset, we first build a distance table. Since every quantized sub-vector is represented by a centroid id, the table precomputes the distance from q to every centroid:</p>
@@ -59,6 +63,10 @@
 <p>For a compressed vector code, the distance is:</p>
 <pre><code>sum over j in [0, M): distance_table[j][code[j]]</code></pre>
 <h2 id="transposing" tabindex="-1">Transposing</h2>
+<figure class="article-figure">
+  <img src="/assets/figures/4bit-pq-transposed-layout.svg" alt="Row-major and transposed PQ code memory layouts" loading="lazy" decoding="async">
+  <figcaption>After transposition, code[j][i] is contiguous for the block-first loop order, so both the code stream and the distance table have better locality.</figcaption>
+</figure>
 <p>I first saw this idea in <a href="https://arxiv.org/abs/1704.07355">Accelerated Nearest Neighbor Search with Quick ADC</a>, but the same optimization also applies to 8-bit PQ and works very well.</p>
 <p>Consider the straightforward way to compute distances for compressed vectors:</p>
 <pre><code class="language-rust">let mut dists = vec![0.0f32; n]
@@ -83,6 +91,10 @@ for j in 0..M {
 }</code></pre>
 <p>This improves locality and also gives the compiler a much better chance to generate efficient code. The performance gain is significant.</p>
 <h2 id="4-bit-pq" tabindex="-1">4-bit PQ</h2>
+<figure class="article-figure">
+  <img src="/assets/figures/4bit-pq-quick-adc.svg" alt="Quick ADC 4-bit lookup table and SIMD shuffle diagram" loading="lazy" decoding="async">
+  <figcaption>The Quick ADC constraint: 4-bit centroid ids create a 16-entry table, and u8 distance quantization lets the whole lookup table fit in one 128-bit SIMD register.</figcaption>
+</figure>
 <p>Back to 4-bit PQ. Based on the optimization above, we can go one step further. Registers are faster than cache. Ignoring register size for a moment, the computation is equivalent to this pseudo-code:</p>
 <pre><code class="language-rust">let mut dists = vec![0.0f32; n]
 for j in 0..M {
@@ -102,6 +114,10 @@ for j in 0..M {
 <p>The simplest solution is to set the scalar quantization max value to the sum of the whole distance table. Unsurprisingly, this destroys recall.</p>
 <p>I went back to the paper to see what the authors did, and the answer is a good reminder of the gap between papers and production implementations. They first run a brute-force search, for example top-200, then use the farthest distance as the max value. During accumulation they use saturating add. If the query is top-100, the results that can actually make it into the final answer should not overflow. This is too impractical for my use case, so I did not use it.</p>
 <p>In the end, I gave up on keeping the result in u8x16 all the way through and wrote intermediate results back to memory. Because 4-bit PQ packs two blocks into one byte, I needed to store the sum of two blocks in u8x16. That means I only need the maximum sum of neighboring blocks in the distance table as the max value for scalar quantization. This halves the number of memory writes, so performance is still good, and more importantly, recall loss is small.</p>
+<figure class="article-figure">
+  <img src="/assets/figures/4bit-pq-benchmark-summary.svg" alt="Quick ADC paper benchmark headline summary" loading="lazy" decoding="async">
+  <figcaption>A redrawn headline benchmark summary, not a copied paper figure: the <a href="https://arxiv.org/abs/1704.07355">Quick ADC paper</a> reports roughly 3-6x speedup over ADC and Recall@100 0.94 / 3.4 ms on SIFT1B with 128-bit codes.</figcaption>
+</figure>
       </div>
     </div>
     <footer class="article-footer">

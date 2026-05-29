@@ -152,6 +152,75 @@ const generatedTagsBySlug = new Map([
   ["824-lab2", ["Distributed Systems", "Raft", "Course"]]
 ]);
 
+const quickAdcFigures = {
+  zh: [
+    {
+      headingId: "product-quantization",
+      src: "/assets/figures/4bit-pq-pipeline.svg",
+      alt: "Product quantization encoding and distance lookup pipeline",
+      caption:
+        'PQ 编码流程示意：向量被切成多个 sub-vector，每个位置独立训练 codebook，查询时用 distance table 做 ADC 查表求和。'
+    },
+    {
+      headingId: "transposing",
+      src: "/assets/figures/4bit-pq-transposed-layout.svg",
+      alt: "Row-major and transposed PQ code memory layouts",
+      caption:
+        '转置布局把 code[j][i] 放成连续内存。外层按 block 扫描时，distance table 保持 cache 友好，code 访问也变成顺序访问。'
+    },
+    {
+      headingId: "4bit-pq",
+      src: "/assets/figures/4bit-pq-quick-adc.svg",
+      alt: "Quick ADC 4-bit lookup table and SIMD shuffle diagram",
+      caption:
+        'Quick ADC 的关键约束：4-bit centroid id 只有 16 个候选，再把 distance quantize 成 u8，整张 lookup table 就能放进一个 128-bit SIMD register。'
+    }
+  ],
+  en: [
+    {
+      headingId: "product-quantization",
+      src: "/assets/figures/4bit-pq-pipeline.svg",
+      alt: "Product quantization encoding and distance lookup pipeline",
+      caption:
+        "PQ encoding path: split the vector into sub-vectors, train one codebook per position, then use an ADC distance table at query time."
+    },
+    {
+      headingId: "transposing",
+      src: "/assets/figures/4bit-pq-transposed-layout.svg",
+      alt: "Row-major and transposed PQ code memory layouts",
+      caption:
+        "After transposition, code[j][i] is contiguous for the block-first loop order, so both the code stream and the distance table have better locality."
+    },
+    {
+      headingId: "4-bit-pq",
+      src: "/assets/figures/4bit-pq-quick-adc.svg",
+      alt: "Quick ADC 4-bit lookup table and SIMD shuffle diagram",
+      caption:
+        "The Quick ADC constraint: 4-bit centroid ids create a 16-entry table, and u8 distance quantization lets the whole lookup table fit in one 128-bit SIMD register."
+    }
+  ]
+};
+
+const quickAdcBenchmarkFigure = {
+  zh: {
+    src: "/assets/figures/4bit-pq-benchmark-summary.svg",
+    alt: "Quick ADC paper benchmark headline summary",
+    caption:
+      '重画的论文 headline benchmark 摘要，不是论文截图：<a href="https://arxiv.org/abs/1704.07355">Quick ADC 论文</a>报告了相对 ADC 约 3-6x 的加速，并在 SIFT1B 128-bit codes 上达到 Recall@100 0.94 / 3.4 ms。'
+  },
+  en: {
+    src: "/assets/figures/4bit-pq-benchmark-summary.svg",
+    alt: "Quick ADC paper benchmark headline summary",
+    caption:
+      'A redrawn headline benchmark summary, not a copied paper figure: the <a href="https://arxiv.org/abs/1704.07355">Quick ADC paper</a> reports roughly 3-6x speedup over ADC and Recall@100 0.94 / 3.4 ms on SIFT1B with 128-bit codes.'
+  }
+};
+
+const quickAdcSummary = {
+  zh: "4bit PQ 实现笔记：为什么它理论上能比 8bit PQ 更快，Quick ADC 依赖的 code 转置和 SIMD lookup，以及实际实现里 distance quantization 的取舍。",
+  en: "Notes from implementing 4-bit product quantization: why it should be faster than 8-bit PQ, where the paper leaves implementation gaps, and what tradeoffs worked in practice."
+};
+
 function query(sql) {
   const output = execFileSync("sqlite3", ["-json", dbPath, sql], { encoding: "utf8" });
   return output.trim() ? JSON.parse(output) : [];
@@ -366,6 +435,46 @@ function renderMarkdown(markdown) {
     html.push(`<pre><code${codeLang ? ` class="language-${escapeAttr(codeLang)}"` : ""}>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
   }
   return html.join("\n");
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function articleFigure({ src, alt, caption }) {
+  return `<figure class="article-figure">
+  <img src="${escapeAttr(src)}" alt="${escapeAttr(alt)}" loading="lazy" decoding="async">
+  <figcaption>${caption}</figcaption>
+</figure>`;
+}
+
+function insertAfterHeading(html, headingId, addition) {
+  const pattern = new RegExp(
+    `(<h[1-3]\\s+[^>]*id=["']${escapeRegExp(headingId)}["'][^>]*>[\\s\\S]*?<\\/h[1-3]>)`
+  );
+  if (!pattern.test(html)) {
+    return `${html}\n${addition}`;
+  }
+  return html.replace(pattern, `$1\n${addition}`);
+}
+
+function enhancePostContent(post, lang) {
+  if (post.slug !== "4bitpqreadingimplementing") {
+    return post;
+  }
+
+  let formatContent = post.format_content;
+  for (const figure of quickAdcFigures[lang] || []) {
+    formatContent = insertAfterHeading(formatContent, figure.headingId, articleFigure(figure));
+  }
+
+  formatContent = `${formatContent}\n${articleFigure(quickAdcBenchmarkFigure[lang])}`;
+  return {
+    ...post,
+    heroImage: post.heroImage || quickAdcFigures[lang][0].src,
+    summary: post.summary || quickAdcSummary[lang],
+    format_content: formatContent
+  };
 }
 
 function headingList(html) {
@@ -763,11 +872,11 @@ async function write(file, content) {
 
 function localizePost(post, lang) {
   if (lang === "zh") {
-    return {
+    return enhancePostContent({
       ...post,
       language: lang,
       format_content: normalizeContent(post.format_content)
-    };
+    }, lang);
   }
 
   const translation = englishPosts[post.slug];
@@ -776,14 +885,14 @@ function localizePost(post, lang) {
   }
 
   const formatContent = renderMarkdown(translation.content);
-  return {
+  return enhancePostContent({
     ...post,
     language: lang,
     title: translation.title || post.title,
     summary: translation.summary || stripHtml(formatContent).slice(0, 190),
     format_content: formatContent,
     word_count: stripHtml(formatContent).split(/\s+/).filter(Boolean).length
-  };
+  }, lang);
 }
 
 async function main() {

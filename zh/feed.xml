@@ -10,7 +10,7 @@
     <link>https://bubblecal.github.io/zh/posts/4bitpqreadingimplementing/</link>
     <guid>https://bubblecal.github.io/zh/posts/4bitpqreadingimplementing/</guid>
     <pubDate>Fri, 29 Nov 2024 06:26:43 GMT</pubDate>
-    <description>最近在做 4bit PQ(Accelerated Nearest Neighbor Search with Quick ADC) , 直觉上的话 4bit PQ 能比 8bit PQ 快很多，不过到完整实现这个东西后才发现坑还挺大的…… Product Quantization 从 PQ 说起，PQ...</description>
+    <description>4bit PQ 实现笔记：为什么它理论上能比 8bit PQ 更快，Quick ADC 依赖的 code 转置和 SIMD lookup，以及实际实现里 distance quantization 的取舍。</description>
   </item>
   <item>
     <title>Paper Reading: VBASE: Relational Queries via Relaxed Monotonicity</title>

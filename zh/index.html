@@ -72,9 +72,9 @@
   <div class="post-card__body">
     <div class="post-card__meta">2024-11-29 · 7 min · Paper Reading, Technology · tags: Vector Search, Product Quantization, SIMD</div>
     <h2><a href="/zh/posts/4bitpqreadingimplementing/">4bit PQ reading &amp; implementing</a></h2>
-    <p>最近在做 4bit PQ(Accelerated Nearest Neighbor Search with Quick ADC) , 直觉上的话 4bit PQ 能比 8bit PQ 快很多，不过到完整实现这个东西后才发现坑还挺大的…… Product Quantization 从 PQ 说起，PQ...</p>
+    <p>4bit PQ 实现笔记：为什么它理论上能比 8bit PQ 更快，Quick ADC 依赖的 code 转置和 SIMD lookup，以及实际实现里 distance quantization 的取舍。</p>
   </div>
-  <a class="post-card__mark" href="/zh/posts/4bitpqreadingimplementing/" aria-label="4bit PQ reading &amp; implementing"><span>2024</span></a>
+  <a class="post-card__media" href="/zh/posts/4bitpqreadingimplementing/" aria-label="4bit PQ reading &amp; implementing"><img src="/assets/figures/4bit-pq-pipeline.svg" alt="" loading="eager"></a>
 </article>
         <article class="post-card" data-post-card data-title="Paper Reading: VBASE: Relational Queries via Relaxed Monotonicity" data-categories="Paper Reading Technology" data-tags="Vector Search ANN Query Processing">
   <div class="post-card__body">

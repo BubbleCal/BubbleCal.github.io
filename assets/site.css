@@ -374,6 +374,12 @@ h3 {
   object-fit: cover;
 }
 
+.post-card__media img[src$=".svg"] {
+  padding: 14px;
+  background: var(--surface-strong);
+  object-fit: contain;
+}
+
 .post-card__mark {
   display: grid;
   place-items: center;
@@ -646,6 +652,23 @@ h3 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-strong);
+}
+
+.article-figure {
+  margin: 30px 0;
+}
+
+.article-figure img {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.article-figure figcaption {
+  margin-top: 10px;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .article-content pre {
