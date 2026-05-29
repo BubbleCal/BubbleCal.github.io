@@ -127,7 +127,7 @@ const locales = {
   }
 };
 
-const excludedSlugs = new Set(["vscode-milvus"]);
+const excludedSlugs = new Set(["vscode-milvus", "datafusion-source-code-part0"]);
 const categoryNameMap = new Map([
   ["技术", "Technology"],
   ["PaperReading", "Paper Reading"],
@@ -148,7 +148,6 @@ const generatedTagsBySlug = new Map([
     "shou-wang-xian-feng-ru-men--duan-zan-hei-ping-xian-xiang-bei-hou-de-xian-shi-qi-yuan-li",
     ["Overwatch", "Display", "Hardware"]
   ],
-  ["datafusion-source-code-part0", ["DataFusion", "Query Engine", "Rust"]],
   ["swap-cache-mmap", ["Linux", "Memory Management", "mmap"]],
   ["824-lab2", ["Distributed Systems", "Raft", "Course"]]
 ]);

@@ -34,13 +34,6 @@
     <description>A debugging note on why a 2K 240 Hz monitor briefly blacked out when switching away from fullscreen games, and how refresh rate, bit depth, DisplayPort bandwidth, and DSC explain it.</description>
   </item>
   <item>
-    <title>DataFusion Source Code, Part 0</title>
-    <link>https://bubblecal.github.io/en/posts/datafusion-source-code-part0/</link>
-    <guid>https://bubblecal.github.io/en/posts/datafusion-source-code-part0/</guid>
-    <pubDate>Fri, 26 May 2023 09:15:40 GMT</pubDate>
-    <description>A source-reading note on DataFusion&#39;s DataFrame execution path, MemoryExec, FilterExec, and how filtering produces new batches.</description>
-  </item>
-  <item>
     <title>Swap, Cache, and mmap</title>
     <link>https://bubblecal.github.io/en/posts/swap-cache-mmap/</link>
     <guid>https://bubblecal.github.io/en/posts/swap-cache-mmap/</guid>

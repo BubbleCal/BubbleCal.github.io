@@ -168,48 +168,6 @@
     "language": "zh"
   },
   {
-    "id": 9,
-    "title": "datafusion 源码 Part0",
-    "slug": "datafusion-source-code-part0",
-    "create_time": "2023-05-26 17:15:40.682582848+08:00",
-    "update_time": null,
-    "format_content": "<h1 id=\"datafusion\" tabindex=\"-1\">datafusion</h1>\n<h2 id=\"dataframe\" tabindex=\"-1\">DataFrame</h2>\n<p>DataFrame 是最终结果数据集的一个视图，并不持有数据，也没有执行。当调用一些 action 方法后才会开始真正执行查询。</p>\n<p>下面以 <code>collect()</code> 方法为例，过一下整个执行的流程：</p>\n<pre><code class=\"language-rust\">    pub async fn collect(self) -&gt; Result&lt;Vec&lt;RecordBatch&gt;&gt; {\n        let task_ctx = Arc::new(self.task_ctx());\n        let plan = self.create_physical_plan().await?;\n        collect(plan, task_ctx).await\n    }\n</code></pre>\n<p><code>collect</code> 首先会创建 physical plan，然后调用 <code>collect</code> util 去执行这个 plan，内部就是调了一下 <code>execute_stream</code> 然后消费 stream 聚合数据：</p>\n<pre><code class=\"language-rust\">/// Execute the [ExecutionPlan] and return a single stream of results\npub fn execute_stream(\n    plan: Arc&lt;dyn ExecutionPlan&gt;,\n    context: Arc&lt;TaskContext&gt;,\n) -&gt; Result&lt;SendableRecordBatchStream&gt; {\n    match plan.output_partitioning().partition_count() {\n        0 =&gt; Ok(Box::pin(EmptyRecordBatchStream::new(plan.schema()))),\n        1 =&gt; plan.execute(0, context),\n        _ =&gt; {\n            // merge into a single partition\n            let plan = CoalescePartitionsExec::new(plan.clone());\n            // CoalescePartitionsExec must produce a single partition\n            assert_eq!(1, plan.output_partitioning().partition_count());\n            plan.execute(0, context)\n        }\n    }\n}\n</code></pre>\n<p>如果输入是多个 partitions，则 <code>CoalescePartitionExec</code> 会并发在各个 partition 执行查询。因此如果要在多个数据集上同时进行查询，可以考虑把它们拆分到多个 partitions，不过 datafusion 本身的优化器也会在原始数据上进行 repartition 优化，把一个 partition 内的数据拆分到多个 partitions。</p>\n<h3 id=\"executionplan\" tabindex=\"-1\">ExecutionPlan</h3>\n<p>这里主要介绍 <code>MemoryExec</code> 和 <code>FilterExec</code>。</p>\n<h4 id=\"memoryexec\" tabindex=\"-1\">MemoryExec</h4>\n<p>在 <code>MemTable</code> 上执行查询时， <code>MemoryExec</code> 会作为整个查询计划的叶子节点：</p>\n<pre><code class=\"language-rust\">    fn poll_next(\n        mut self: std::pin::Pin&lt;&amp;mut Self&gt;,\n        _: &amp;mut Context&lt;&#39;_&gt;,\n    ) -&gt; Poll&lt;Option&lt;Self::Item&gt;&gt; {\n        Poll::Ready(if self.index &lt; self.data.len() {\n            self.index += 1;\n            let batch = &amp;self.data[self.index - 1];\n\n            // return just the columns requested\n            let batch = match self.projection.as_ref() {\n                Some(columns) =&gt; batch.project(columns)?,\n                None =&gt; batch.clone(),\n            };\n\n            Some(Ok(batch))\n        } else {\n            None\n        })\n    }\n</code></pre>\n<p>project 可能会被下推到这一层，整个逻辑也很简单，把 projection 选中的列对应 Array 选出来，然后再构造一个只包含这些列的 batch。</p>\n<h4 id=\"filterexec\" tabindex=\"-1\">FilterExec</h4>\n<p><code>FilterExec</code> 对输入侧的数据进行过滤：</p>\n<pre><code class=\"language-rust\">    fn poll_next(\n        mut self: Pin&lt;&amp;mut Self&gt;,\n        cx: &amp;mut Context&lt;&#39;_&gt;,\n    ) -&gt; Poll&lt;Option&lt;Self::Item&gt;&gt; {\n        let poll;\n        loop {\n            match self.input.poll_next_unpin(cx) {\n                Poll::Ready(value) =&gt; match value {\n                    Some(Ok(batch)) =&gt; {\n                        let timer = self.baseline_metrics.elapsed_compute().timer();\n                        let filtered_batch = batch_filter(&amp;batch, &amp;self.predicate)?;\n                        // skip entirely filtered batches\n                        if filtered_batch.num_rows() == 0 {\n                            continue;\n                        }\n                        timer.done();\n                        poll = Poll::Ready(Some(Ok(filtered_batch)));\n                        break;\n                    }\n                    _ =&gt; {\n                        poll = Poll::Ready(value);\n                        break;\n                    }\n                },\n                Poll::Pending =&gt; {\n                    poll = Poll::Pending;\n                    break;\n                }\n            }\n        }\n        self.baseline_metrics.record_poll(poll)\n    }\n</code></pre>\n<p>过滤的逻辑大致就是对 batch 里的数据做一下迭代，生成一个 bitmap，然后用这个 bitmap 来生成一个 <code>FilterPredicate</code>，<code>FilterPredicate</code> 会有4种策略：</p>\n<ul>\n<li>All：选中所有数据</li>\n<li>None：滤除所有数据</li>\n<li>Slice：生成若干个区间，选中这些区间覆盖的数据</li>\n<li>Index：生成若干个下标，选中这些下标上的数据<br />\n当选中率大于 0.8 时会使用 slice 策略，否则使用 index 策略</li>\n</ul>\n<p>过滤之后会生成一个新的 batch，这里会把选中的数据复制一份。</p>\n",
-    "summary": "",
-    "thumbnail": "",
-    "word_count": 3647,
-    "visits": 2070,
-    "likes": 0,
-    "categories": [
-      {
-        "name": "Technology",
-        "slug": "tech"
-      },
-      {
-        "name": "General",
-        "slug": "default"
-      }
-    ],
-    "tags": [
-      {
-        "name": "DataFusion",
-        "slug": "datafusion",
-        "color": "#cfd3d7"
-      },
-      {
-        "name": "Query Engine",
-        "slug": "query-engine",
-        "color": "#cfd3d7"
-      },
-      {
-        "name": "Rust",
-        "slug": "rust",
-        "color": "#cfd3d7"
-      }
-    ],
-    "heroImage": "",
-    "language": "zh"
-  },
-  {
     "id": 5,
     "title": "Swap，Cache 与 mmap",
     "slug": "swap-cache-mmap",

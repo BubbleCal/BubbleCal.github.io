@@ -34,13 +34,6 @@
     <description>前段时间购置了一个显示器，规格是 2K@240Hz，用起来之后感觉比 144Hz 流畅很多，但是很快我就发现这个显示器有一个问题。 当我进行全屏游戏的时候，如果这个时候切回到桌面，显示器会短暂黑屏一段时间，并且弹出 OSD 显示显示器目前的状态。因为我需要经常切出游戏做别的事情，这个黑屏带来的体验太...</description>
   </item>
   <item>
-    <title>datafusion 源码 Part0</title>
-    <link>https://bubblecal.github.io/zh/posts/datafusion-source-code-part0/</link>
-    <guid>https://bubblecal.github.io/zh/posts/datafusion-source-code-part0/</guid>
-    <pubDate>Fri, 26 May 2023 09:15:40 GMT</pubDate>
-    <description>datafusion DataFrame DataFrame 是最终结果数据集的一个视图，并不持有数据，也没有执行。当调用一些 action 方法后才会开始真正执行查询。 下面以 collect() 方法为例，过一下整个执行的流程： pub async fn collect(self) -&gt; Res...</description>
-  </item>
-  <item>
     <title>Swap，Cache 与 mmap</title>
     <link>https://bubblecal.github.io/zh/posts/swap-cache-mmap/</link>
     <guid>https://bubblecal.github.io/zh/posts/swap-cache-mmap/</guid>
