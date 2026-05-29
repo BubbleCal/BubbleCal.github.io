@@ -1,89 +1,88 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 460" role="img" aria-labelledby="title desc">
   <title id="title">Row-major versus transposed PQ code layout</title>
-  <desc id="desc">Row-major PQ codes are strided when scanning by block, while a transposed code layout makes each block stream contiguous.</desc>
+  <desc id="desc">A side-by-side diagram showing strided reads before transposition and contiguous block streams after transposition.</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#315f99"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 10 5 0 10z" fill="#315f99"/>
     </marker>
     <style>
       .bg { fill: #fbfcfa; }
-      .panel { fill: #ffffff; stroke: #d9dfda; stroke-width: 1.5; }
-      .title { font: 700 24px Inter, system-ui, sans-serif; fill: #171a18; }
-      .label { font: 700 15px Inter, system-ui, sans-serif; fill: #171a18; }
-      .small { font: 12px Inter, system-ui, sans-serif; fill: #69736e; }
-      .mono { font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #171a18; }
+      .panel { fill: #fff; stroke: #d9dfda; stroke-width: 1.5; }
+      .title { font: 700 25px Inter, system-ui, sans-serif; fill: #171a18; }
+      .label { font: 700 16px Inter, system-ui, sans-serif; fill: #171a18; }
+      .body { font: 13px Inter, system-ui, sans-serif; fill: #69736e; }
+      .mono { font: 13px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #171a18; }
       .cell { fill: #eef2ef; stroke: #d9dfda; }
-      .scan { fill: #dce7f7; stroke: #315f99; }
       .bad { fill: #f4ded8; stroke: #9f513f; }
       .good { fill: #dcebdd; stroke: #2e6b4e; }
+      .note { fill: #dce7f7; stroke: #315f99; }
       .arrow { fill: none; stroke: #315f99; stroke-width: 2.5; marker-end: url(#arrow); }
-      .badline { fill: none; stroke: #9f513f; stroke-width: 2.2; stroke-dasharray: 5 5; marker-end: url(#arrow); }
+      .jump { fill: none; stroke: #9f513f; stroke-width: 2.2; stroke-dasharray: 6 5; marker-end: url(#arrow); }
     </style>
   </defs>
-  <rect class="bg" width="960" height="520" rx="18"/>
-  <text class="title" x="40" y="54">Transposing PQ codes</text>
-  <text class="small" x="40" y="80">The same loop order is fast only if the code stream is laid out for it.</text>
 
-  <rect class="panel" x="44" y="124" width="390" height="320" rx="14"/>
-  <text class="label" x="74" y="160">Before: code[i][j]</text>
-  <text class="small" x="74" y="184">Vector-major rows. Block-first scan jumps by row stride.</text>
-  <g transform="translate(74 220)">
-    <text class="mono" x="0" y="-14">vectors</text>
-    <text class="mono" x="206" y="-14">blocks</text>
-    <g>
-      <rect class="bad" x="0" y="0" width="34" height="30" rx="4"/>
-      <rect class="cell" x="38" y="0" width="34" height="30" rx="4"/>
-      <rect class="cell" x="76" y="0" width="34" height="30" rx="4"/>
-      <rect class="cell" x="114" y="0" width="34" height="30" rx="4"/>
-      <rect class="bad" x="0" y="36" width="34" height="30" rx="4"/>
-      <rect class="cell" x="38" y="36" width="34" height="30" rx="4"/>
-      <rect class="cell" x="76" y="36" width="34" height="30" rx="4"/>
-      <rect class="cell" x="114" y="36" width="34" height="30" rx="4"/>
-      <rect class="bad" x="0" y="72" width="34" height="30" rx="4"/>
-      <rect class="cell" x="38" y="72" width="34" height="30" rx="4"/>
-      <rect class="cell" x="76" y="72" width="34" height="30" rx="4"/>
-      <rect class="cell" x="114" y="72" width="34" height="30" rx="4"/>
-      <rect class="bad" x="0" y="108" width="34" height="30" rx="4"/>
-      <rect class="cell" x="38" y="108" width="34" height="30" rx="4"/>
-      <rect class="cell" x="76" y="108" width="34" height="30" rx="4"/>
-      <rect class="cell" x="114" y="108" width="34" height="30" rx="4"/>
-    </g>
-    <path class="badline" d="M17 30 L17 36 L17 66 L17 72 L17 102 L17 108"/>
-    <text class="small" x="186" y="34">same block</text>
-    <text class="small" x="186" y="54">non-contiguous reads</text>
+  <rect class="bg" width="920" height="460" rx="18"/>
+  <text class="title" x="40" y="52">Transposing PQ codes</text>
+  <text class="body" x="40" y="78">The block-first loop is fast only when the codes for that block are contiguous.</text>
+
+  <rect class="panel" x="40" y="112" width="365" height="296" rx="14"/>
+  <text class="label" x="66" y="148">Before: code[i][j]</text>
+  <text class="body" x="66" y="172">Vector-major rows. Same block is strided.</text>
+  <g transform="translate(84 216)">
+    <text class="mono" x="0" y="-16">vectors</text>
+    <text class="mono" x="176" y="-16">blocks</text>
+    <rect class="bad" x="0" y="0" width="34" height="28" rx="4"/>
+    <rect class="cell" x="42" y="0" width="34" height="28" rx="4"/>
+    <rect class="cell" x="84" y="0" width="34" height="28" rx="4"/>
+    <rect class="cell" x="126" y="0" width="34" height="28" rx="4"/>
+    <rect class="bad" x="0" y="38" width="34" height="28" rx="4"/>
+    <rect class="cell" x="42" y="38" width="34" height="28" rx="4"/>
+    <rect class="cell" x="84" y="38" width="34" height="28" rx="4"/>
+    <rect class="cell" x="126" y="38" width="34" height="28" rx="4"/>
+    <rect class="bad" x="0" y="76" width="34" height="28" rx="4"/>
+    <rect class="cell" x="42" y="76" width="34" height="28" rx="4"/>
+    <rect class="cell" x="84" y="76" width="34" height="28" rx="4"/>
+    <rect class="cell" x="126" y="76" width="34" height="28" rx="4"/>
+    <rect class="bad" x="0" y="114" width="34" height="28" rx="4"/>
+    <rect class="cell" x="42" y="114" width="34" height="28" rx="4"/>
+    <rect class="cell" x="84" y="114" width="34" height="28" rx="4"/>
+    <rect class="cell" x="126" y="114" width="34" height="28" rx="4"/>
+    <path class="jump" d="M17 30v12m0 26v12m0 26v12"/>
   </g>
+  <text class="body" x="261" y="262">read block 0</text>
+  <text class="body" x="261" y="282">with row jumps</text>
+  <rect class="bad" x="260" y="314" width="95" height="30" rx="7"/>
+  <text class="body" x="276" y="334">poor locality</text>
 
-  <path class="arrow" d="M450 284 C482 284 492 284 522 284"/>
-  <text class="label" x="462" y="250">transpose</text>
+  <path class="arrow" d="M425 260h70"/>
+  <text class="label" x="435" y="234">transpose</text>
 
-  <rect class="panel" x="526" y="124" width="390" height="320" rx="14"/>
-  <text class="label" x="556" y="160">After: code[j][i]</text>
-  <text class="small" x="556" y="184">Block-major rows. The inner loop reads a contiguous stream.</text>
-  <g transform="translate(556 220)">
-    <text class="mono" x="0" y="-14">blocks</text>
-    <text class="mono" x="198" y="-14">vectors</text>
-    <g>
-      <rect class="good" x="0" y="0" width="34" height="30" rx="4"/>
-      <rect class="good" x="38" y="0" width="34" height="30" rx="4"/>
-      <rect class="good" x="76" y="0" width="34" height="30" rx="4"/>
-      <rect class="good" x="114" y="0" width="34" height="30" rx="4"/>
-      <rect class="cell" x="0" y="36" width="34" height="30" rx="4"/>
-      <rect class="cell" x="38" y="36" width="34" height="30" rx="4"/>
-      <rect class="cell" x="76" y="36" width="34" height="30" rx="4"/>
-      <rect class="cell" x="114" y="36" width="34" height="30" rx="4"/>
-      <rect class="cell" x="0" y="72" width="34" height="30" rx="4"/>
-      <rect class="cell" x="38" y="72" width="34" height="30" rx="4"/>
-      <rect class="cell" x="76" y="72" width="34" height="30" rx="4"/>
-      <rect class="cell" x="114" y="72" width="34" height="30" rx="4"/>
-      <rect class="cell" x="0" y="108" width="34" height="30" rx="4"/>
-      <rect class="cell" x="38" y="108" width="34" height="30" rx="4"/>
-      <rect class="cell" x="76" y="108" width="34" height="30" rx="4"/>
-      <rect class="cell" x="114" y="108" width="34" height="30" rx="4"/>
-    </g>
-    <path class="arrow" d="M0 15 L150 15"/>
-    <text class="small" x="186" y="34">same block</text>
-    <text class="small" x="186" y="54">sequential reads</text>
-    <rect class="scan" x="0" y="172" width="250" height="44" rx="10"/>
-    <text class="mono" x="16" y="200">for j in blocks { for i in vectors }</text>
+  <rect class="panel" x="515" y="112" width="365" height="296" rx="14"/>
+  <text class="label" x="541" y="148">After: code[j][i]</text>
+  <text class="body" x="541" y="172">Block-major rows. Same block is sequential.</text>
+  <g transform="translate(559 216)">
+    <text class="mono" x="0" y="-16">blocks</text>
+    <text class="mono" x="176" y="-16">vectors</text>
+    <rect class="good" x="0" y="0" width="34" height="28" rx="4"/>
+    <rect class="good" x="42" y="0" width="34" height="28" rx="4"/>
+    <rect class="good" x="84" y="0" width="34" height="28" rx="4"/>
+    <rect class="good" x="126" y="0" width="34" height="28" rx="4"/>
+    <rect class="cell" x="0" y="38" width="34" height="28" rx="4"/>
+    <rect class="cell" x="42" y="38" width="34" height="28" rx="4"/>
+    <rect class="cell" x="84" y="38" width="34" height="28" rx="4"/>
+    <rect class="cell" x="126" y="38" width="34" height="28" rx="4"/>
+    <rect class="cell" x="0" y="76" width="34" height="28" rx="4"/>
+    <rect class="cell" x="42" y="76" width="34" height="28" rx="4"/>
+    <rect class="cell" x="84" y="76" width="34" height="28" rx="4"/>
+    <rect class="cell" x="126" y="76" width="34" height="28" rx="4"/>
+    <rect class="cell" x="0" y="114" width="34" height="28" rx="4"/>
+    <rect class="cell" x="42" y="114" width="34" height="28" rx="4"/>
+    <rect class="cell" x="84" y="114" width="34" height="28" rx="4"/>
+    <rect class="cell" x="126" y="114" width="34" height="28" rx="4"/>
+    <path class="arrow" d="M5 14h145"/>
   </g>
+  <text class="body" x="735" y="262">read block 0</text>
+  <text class="body" x="735" y="282">as one stream</text>
+  <rect class="note" x="728" y="314" width="122" height="30" rx="7"/>
+  <text class="body" x="751" y="334">cache friendly</text>
 </svg>

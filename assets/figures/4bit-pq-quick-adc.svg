@@ -1,17 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 460" role="img" aria-labelledby="title desc">
   <title id="title">Quick ADC SIMD lookup</title>
-  <desc id="desc">A 16-entry u8 distance table fits in one 128-bit SIMD register. 4-bit codes select lanes by shuffle and the selected distances are accumulated.</desc>
+  <desc id="desc">A diagram of 4-bit codes indexing a 16 byte distance table in a SIMD register, followed by shuffle and accumulation.</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#315f99"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 10 5 0 10z" fill="#315f99"/>
     </marker>
     <style>
       .bg { fill: #fbfcfa; }
-      .panel { fill: #ffffff; stroke: #d9dfda; stroke-width: 1.5; }
-      .title { font: 700 24px Inter, system-ui, sans-serif; fill: #171a18; }
-      .label { font: 700 15px Inter, system-ui, sans-serif; fill: #171a18; }
-      .small { font: 12px Inter, system-ui, sans-serif; fill: #69736e; }
-      .mono { font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #171a18; }
+      .panel { fill: #fff; stroke: #d9dfda; stroke-width: 1.5; }
+      .title { font: 700 25px Inter, system-ui, sans-serif; fill: #171a18; }
+      .label { font: 700 16px Inter, system-ui, sans-serif; fill: #171a18; }
+      .body { font: 13px Inter, system-ui, sans-serif; fill: #69736e; }
+      .mono { font: 13px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #171a18; }
       .lane { fill: #dce7f7; stroke: #315f99; }
       .code { fill: #f4edcf; stroke: #8b6d2f; }
       .out { fill: #dcebdd; stroke: #2e6b4e; }
@@ -19,65 +19,62 @@
       .arrow { fill: none; stroke: #315f99; stroke-width: 2.5; marker-end: url(#arrow); }
     </style>
   </defs>
-  <rect class="bg" width="960" height="520" rx="18"/>
-  <text class="title" x="40" y="54">Quick ADC: shuffle + add</text>
-  <text class="small" x="40" y="80">4-bit ids select from a 16-byte distance table already resident in a SIMD register.</text>
 
-  <rect class="panel" x="54" y="118" width="852" height="98" rx="14"/>
-  <text class="label" x="80" y="154">u8 distance table for one PQ block</text>
-  <text class="small" x="80" y="178">16 lanes = 16 centroids = one 128-bit register</text>
-  <g transform="translate(342 146)">
-    <rect class="lane" x="0" y="0" width="28" height="34" rx="5"/><text class="mono" x="9" y="22">0</text>
-    <rect class="lane" x="34" y="0" width="28" height="34" rx="5"/><text class="mono" x="43" y="22">1</text>
-    <rect class="lane" x="68" y="0" width="28" height="34" rx="5"/><text class="mono" x="77" y="22">2</text>
-    <rect class="lane" x="102" y="0" width="28" height="34" rx="5"/><text class="mono" x="111" y="22">3</text>
-    <rect class="lane" x="136" y="0" width="28" height="34" rx="5"/><text class="mono" x="145" y="22">4</text>
-    <rect class="lane" x="170" y="0" width="28" height="34" rx="5"/><text class="mono" x="179" y="22">5</text>
-    <rect class="lane" x="204" y="0" width="28" height="34" rx="5"/><text class="mono" x="213" y="22">6</text>
-    <rect class="lane" x="238" y="0" width="28" height="34" rx="5"/><text class="mono" x="247" y="22">7</text>
-    <rect class="lane" x="272" y="0" width="28" height="34" rx="5"/><text class="mono" x="281" y="22">8</text>
-    <rect class="lane" x="306" y="0" width="28" height="34" rx="5"/><text class="mono" x="311" y="22">9</text>
-    <rect class="lane" x="340" y="0" width="28" height="34" rx="5"/><text class="mono" x="346" y="22">10</text>
-    <rect class="lane" x="374" y="0" width="28" height="34" rx="5"/><text class="mono" x="380" y="22">11</text>
-    <rect class="lane" x="408" y="0" width="28" height="34" rx="5"/><text class="mono" x="414" y="22">12</text>
-    <rect class="lane" x="442" y="0" width="28" height="34" rx="5"/><text class="mono" x="448" y="22">13</text>
-    <rect class="lane" x="476" y="0" width="28" height="34" rx="5"/><text class="mono" x="482" y="22">14</text>
-    <rect class="lane" x="510" y="0" width="28" height="34" rx="5"/><text class="mono" x="516" y="22">15</text>
+  <rect class="bg" width="920" height="460" rx="18"/>
+  <text class="title" x="40" y="52">Quick ADC: register lookup</text>
+  <text class="body" x="40" y="78">4-bit ids pick lanes from a 16-byte distance table, then selected distances are added.</text>
+
+  <rect class="panel" x="50" y="112" width="820" height="96" rx="14"/>
+  <text class="label" x="76" y="148">Distance table for one PQ block</text>
+  <text class="body" x="76" y="172">16 u8 values fit in one 128-bit register.</text>
+  <g transform="translate(358 138)">
+    <rect class="lane" x="0" y="0" width="26" height="32" rx="5"/><text class="mono" x="9" y="21">0</text>
+    <rect class="lane" x="31" y="0" width="26" height="32" rx="5"/><text class="mono" x="40" y="21">1</text>
+    <rect class="lane" x="62" y="0" width="26" height="32" rx="5"/><text class="mono" x="71" y="21">2</text>
+    <rect class="lane" x="93" y="0" width="26" height="32" rx="5"/><text class="mono" x="102" y="21">3</text>
+    <rect class="lane" x="124" y="0" width="26" height="32" rx="5"/><text class="mono" x="133" y="21">4</text>
+    <rect class="lane" x="155" y="0" width="26" height="32" rx="5"/><text class="mono" x="164" y="21">5</text>
+    <rect class="lane" x="186" y="0" width="26" height="32" rx="5"/><text class="mono" x="195" y="21">6</text>
+    <rect class="lane" x="217" y="0" width="26" height="32" rx="5"/><text class="mono" x="226" y="21">7</text>
+    <rect class="lane" x="248" y="0" width="26" height="32" rx="5"/><text class="mono" x="257" y="21">8</text>
+    <rect class="lane" x="279" y="0" width="26" height="32" rx="5"/><text class="mono" x="288" y="21">9</text>
+    <rect class="lane" x="310" y="0" width="26" height="32" rx="5"/><text class="mono" x="313" y="21">10</text>
+    <rect class="lane" x="341" y="0" width="26" height="32" rx="5"/><text class="mono" x="344" y="21">11</text>
+    <rect class="lane" x="372" y="0" width="26" height="32" rx="5"/><text class="mono" x="375" y="21">12</text>
+    <rect class="lane" x="403" y="0" width="26" height="32" rx="5"/><text class="mono" x="406" y="21">13</text>
+    <rect class="lane" x="434" y="0" width="26" height="32" rx="5"/><text class="mono" x="437" y="21">14</text>
+    <rect class="lane" x="465" y="0" width="26" height="32" rx="5"/><text class="mono" x="468" y="21">15</text>
   </g>
 
-  <path class="arrow" d="M480 224 L480 270"/>
-  <rect class="panel" x="54" y="270" width="398" height="104" rx="14"/>
-  <text class="label" x="80" y="306">Packed 4-bit codes</text>
-  <text class="small" x="80" y="330">Each lane is an index in [0, 15]</text>
-  <g transform="translate(80 346)">
-    <rect class="code" x="0" y="0" width="34" height="30" rx="5"/><text class="mono" x="10" y="20">3</text>
-    <rect class="code" x="40" y="0" width="34" height="30" rx="5"/><text class="mono" x="50" y="20">8</text>
-    <rect class="code" x="80" y="0" width="34" height="30" rx="5"/><text class="mono" x="88" y="20">12</text>
-    <rect class="code" x="120" y="0" width="34" height="30" rx="5"/><text class="mono" x="130" y="20">1</text>
-    <rect class="code" x="160" y="0" width="34" height="30" rx="5"/><text class="mono" x="170" y="20">4</text>
-    <rect class="code" x="200" y="0" width="34" height="30" rx="5"/><text class="mono" x="210" y="20">7</text>
-    <rect class="code" x="240" y="0" width="34" height="30" rx="5"/><text class="mono" x="250" y="20">2</text>
-    <rect class="code" x="280" y="0" width="34" height="30" rx="5"/><text class="mono" x="290" y="20">5</text>
+  <rect class="panel" x="50" y="254" width="250" height="126" rx="14"/>
+  <text class="label" x="76" y="290">Packed codes</text>
+  <text class="body" x="76" y="314">Each lane is an id in [0, 15].</text>
+  <g transform="translate(78 334)">
+    <rect class="code" x="0" y="0" width="30" height="28" rx="5"/><text class="mono" x="10" y="19">3</text>
+    <rect class="code" x="36" y="0" width="30" height="28" rx="5"/><text class="mono" x="46" y="19">8</text>
+    <rect class="code" x="72" y="0" width="30" height="28" rx="5"/><text class="mono" x="78" y="19">12</text>
+    <rect class="code" x="108" y="0" width="30" height="28" rx="5"/><text class="mono" x="118" y="19">1</text>
+    <rect class="code" x="144" y="0" width="30" height="28" rx="5"/><text class="mono" x="154" y="19">4</text>
+    <rect class="code" x="180" y="0" width="30" height="28" rx="5"/><text class="mono" x="190" y="19">7</text>
   </g>
 
-  <rect class="panel" x="508" y="270" width="398" height="104" rx="14"/>
-  <text class="label" x="534" y="306">SIMD shuffle / table lookup</text>
-  <text class="small" x="534" y="330">x86 pshufb or ARM tbl picks lanes by code id</text>
-  <g transform="translate(534 346)">
-    <rect class="out" x="0" y="0" width="34" height="30" rx="5"/><text class="mono" x="7" y="20">d3</text>
-    <rect class="out" x="40" y="0" width="34" height="30" rx="5"/><text class="mono" x="47" y="20">d8</text>
-    <rect class="out" x="80" y="0" width="34" height="30" rx="5"/><text class="mono" x="84" y="20">d12</text>
-    <rect class="out" x="120" y="0" width="34" height="30" rx="5"/><text class="mono" x="127" y="20">d1</text>
-    <rect class="out" x="160" y="0" width="34" height="30" rx="5"/><text class="mono" x="167" y="20">d4</text>
-    <rect class="out" x="200" y="0" width="34" height="30" rx="5"/><text class="mono" x="207" y="20">d7</text>
-    <rect class="out" x="240" y="0" width="34" height="30" rx="5"/><text class="mono" x="247" y="20">d2</text>
-    <rect class="out" x="280" y="0" width="34" height="30" rx="5"/><text class="mono" x="287" y="20">d5</text>
-  </g>
-  <path class="arrow" d="M454 322 L502 322"/>
+  <path class="arrow" d="M315 317h70"/>
 
-  <path class="arrow" d="M706 382 L706 420"/>
-  <rect class="acc" x="302" y="420" width="356" height="52" rx="14"/>
-  <text class="label" x="328" y="452">accumulator += selected distances</text>
-  <rect class="panel" x="684" y="420" width="222" height="52" rx="14"/>
-  <text class="mono" x="710" y="452">saturating add or spill</text>
+  <rect class="panel" x="400" y="254" width="210" height="126" rx="14"/>
+  <text class="label" x="426" y="290">SIMD shuffle</text>
+  <text class="body" x="426" y="314">pshufb / tbl selects lanes.</text>
+  <rect class="out" x="436" y="334" width="138" height="28" rx="7"/>
+  <text class="mono" x="458" y="353">d3 d8 d12 d1...</text>
+
+  <path class="arrow" d="M625 317h70"/>
+
+  <rect class="panel" x="710" y="254" width="160" height="126" rx="14"/>
+  <text class="label" x="736" y="290">Accumulate</text>
+  <text class="body" x="736" y="314">Add into running</text>
+  <text class="body" x="736" y="334">distance sums.</text>
+  <rect class="acc" x="736" y="350" width="104" height="28" rx="7"/>
+  <text class="mono" x="754" y="369">dist += d</text>
+
+  <path class="arrow" d="M505 216v30"/>
+  <text class="body" x="528" y="238">lookup table stays in register</text>
 </svg>

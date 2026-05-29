@@ -1,17 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 460" role="img" aria-labelledby="title desc">
   <title id="title">Product quantization encoding and ADC lookup pipeline</title>
-  <desc id="desc">A vector is split into sub-vectors, each sub-vector is encoded by a local codebook, and query time distance is computed by table lookup and summation.</desc>
+  <desc id="desc">A three step diagram showing vector splitting, local codebook training, and query-time ADC table lookup.</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#315f99"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 10 5 0 10z" fill="#315f99"/>
     </marker>
     <style>
       .bg { fill: #fbfcfa; }
-      .panel { fill: #ffffff; stroke: #d9dfda; stroke-width: 1.5; }
-      .title { font: 700 24px Inter, system-ui, sans-serif; fill: #171a18; }
-      .label { font: 700 15px Inter, system-ui, sans-serif; fill: #171a18; }
-      .small { font: 12px Inter, system-ui, sans-serif; fill: #69736e; }
-      .mono { font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #171a18; }
+      .panel { fill: #fff; stroke: #d9dfda; stroke-width: 1.5; }
+      .title { font: 700 25px Inter, system-ui, sans-serif; fill: #171a18; }
+      .label { font: 700 16px Inter, system-ui, sans-serif; fill: #171a18; }
+      .body { font: 13px Inter, system-ui, sans-serif; fill: #69736e; }
+      .mono { font: 13px ui-monospace, SFMono-Regular, Consolas, monospace; fill: #171a18; }
       .arrow { fill: none; stroke: #315f99; stroke-width: 2.5; marker-end: url(#arrow); }
       .green { fill: #dcebdd; stroke: #2e6b4e; }
       .blue { fill: #dce7f7; stroke: #315f99; }
@@ -20,52 +20,58 @@
       .soft { fill: #eef2ef; stroke: #88938d; }
     </style>
   </defs>
-  <rect class="bg" width="960" height="520" rx="18"/>
-  <text class="title" x="40" y="54">PQ encoding and ADC lookup</text>
-  <text class="small" x="40" y="80">Training compresses vectors into centroid ids; querying turns those ids into distance table lookups.</text>
 
-  <rect class="panel" x="40" y="114" width="210" height="290" rx="14"/>
-  <text class="label" x="68" y="150">1. Split vector</text>
-  <text class="small" x="68" y="174">D dimensions -> M blocks</text>
-  <g transform="translate(68 218)">
-    <rect class="green" x="0" y="0" width="36" height="92" rx="8"/>
-    <rect class="blue" x="42" y="0" width="36" height="92" rx="8"/>
-    <rect class="rust" x="84" y="0" width="36" height="92" rx="8"/>
-    <rect class="gold" x="126" y="0" width="36" height="92" rx="8"/>
-    <text class="mono" x="7" y="52">x0</text>
-    <text class="mono" x="49" y="52">x1</text>
-    <text class="mono" x="91" y="52">x2</text>
-    <text class="mono" x="133" y="52">x3</text>
+  <rect class="bg" width="920" height="460" rx="18"/>
+  <text class="title" x="40" y="52">PQ encoding and ADC lookup</text>
+  <text class="body" x="40" y="78">Training stores centroid ids; querying turns those ids into table lookups.</text>
+
+  <rect class="panel" x="40" y="112" width="240" height="285" rx="14"/>
+  <text class="label" x="66" y="148">1. Split vector</text>
+  <text class="body" x="66" y="173">D dimensions become M blocks.</text>
+  <g transform="translate(65 225)">
+    <rect class="green" x="0" y="0" width="38" height="98" rx="8"/>
+    <rect class="blue" x="47" y="0" width="38" height="98" rx="8"/>
+    <rect class="rust" x="94" y="0" width="38" height="98" rx="8"/>
+    <rect class="gold" x="141" y="0" width="38" height="98" rx="8"/>
+    <text class="mono" x="8" y="54">x0</text>
+    <text class="mono" x="55" y="54">x1</text>
+    <text class="mono" x="102" y="54">x2</text>
+    <text class="mono" x="149" y="54">x3</text>
   </g>
+  <text class="body" x="86" y="354">sub-vectors at the same</text>
+  <text class="body" x="108" y="374">position are grouped</text>
 
-  <path class="arrow" d="M260 260 C295 260 298 260 328 260"/>
+  <path class="arrow" d="M296 255h48"/>
 
-  <rect class="panel" x="330" y="114" width="270" height="290" rx="14"/>
-  <text class="label" x="358" y="150">2. Local codebooks</text>
-  <text class="small" x="358" y="174">One k-means codebook per block</text>
-  <g transform="translate(358 212)">
-    <rect class="green" x="0" y="0" width="72" height="28" rx="7"/>
-    <rect class="blue" x="0" y="42" width="72" height="28" rx="7"/>
-    <rect class="rust" x="0" y="84" width="72" height="28" rx="7"/>
-    <rect class="gold" x="0" y="126" width="72" height="28" rx="7"/>
-    <text class="mono" x="90" y="19">C0: 0..2^B-1</text>
-    <text class="mono" x="90" y="61">C1: 0..2^B-1</text>
-    <text class="mono" x="90" y="103">C2: 0..2^B-1</text>
-    <text class="mono" x="90" y="145">C3: 0..2^B-1</text>
+  <rect class="panel" x="360" y="112" width="240" height="285" rx="14"/>
+  <text class="label" x="386" y="148">2. Train codebooks</text>
+  <text class="body" x="386" y="173">One codebook per block.</text>
+  <g transform="translate(389 218)">
+    <rect class="green" x="0" y="0" width="54" height="28" rx="7"/>
+    <rect class="blue" x="0" y="42" width="54" height="28" rx="7"/>
+    <rect class="rust" x="0" y="84" width="54" height="28" rx="7"/>
+    <rect class="gold" x="0" y="126" width="54" height="28" rx="7"/>
+    <text class="mono" x="13" y="19">C0</text>
+    <text class="mono" x="13" y="61">C1</text>
+    <text class="mono" x="13" y="103">C2</text>
+    <text class="mono" x="13" y="145">C3</text>
+    <text class="body" x="75" y="19">2^B centroids</text>
+    <text class="body" x="75" y="61">2^B centroids</text>
+    <text class="body" x="75" y="103">2^B centroids</text>
+    <text class="body" x="75" y="145">2^B centroids</text>
   </g>
+  <path class="arrow" d="M616 255h48"/>
 
-  <path class="arrow" d="M610 260 C642 260 648 260 678 260"/>
-
-  <rect class="panel" x="680" y="114" width="240" height="290" rx="14"/>
-  <text class="label" x="708" y="150">3. Code + lookup</text>
-  <text class="small" x="708" y="174">Store ids, sum query distances</text>
-  <g transform="translate(708 208)">
-    <rect class="soft" x="0" y="0" width="168" height="44" rx="10"/>
-    <text class="mono" x="14" y="28">code = [3, 12, 4, 8]</text>
-    <rect class="blue" x="0" y="78" width="168" height="44" rx="10"/>
-    <text class="mono" x="14" y="106">distance_table[q]</text>
-    <path class="arrow" d="M84 52 L84 72"/>
-    <text class="label" x="0" y="164">ADC distance</text>
-    <text class="mono" x="0" y="190">sum dt[j][code[j]]</text>
+  <rect class="panel" x="680" y="112" width="200" height="285" rx="14"/>
+  <text class="label" x="706" y="148">3. ADC lookup</text>
+  <text class="body" x="706" y="173">Query builds a table.</text>
+  <g transform="translate(708 219)">
+    <rect class="soft" x="0" y="0" width="144" height="42" rx="9"/>
+    <text class="mono" x="15" y="26">code [3,12,4,8]</text>
+    <rect class="blue" x="0" y="78" width="144" height="42" rx="9"/>
+    <text class="mono" x="18" y="104">distance table</text>
+    <path class="arrow" d="M72 48v22"/>
+    <text class="body" x="4" y="155">sum distance_table</text>
+    <text class="body" x="17" y="175">[j][code[j]]</text>
   </g>
 </svg>
