@@ -54,11 +54,11 @@ const locales = {
     about: {
       eyebrow: "about",
       title: "Yang Cen",
-      description: "关于 Yang Cen。",
+      description: "About Yang Cen.",
       paragraphs: [
-        "我目前在 LanceDB 工作，关注向量查询、全文检索、查询引擎和分布式系统。",
-        "曾经是 ACM 选手和守望先锋玩家，现在正在学习赛车。它们和系统工程对我的吸引力有点相似：细节会不断累积，反馈非常直接，好的表现来自持续而有纪律的迭代。",
-        "这个博客主要记录技术笔记、论文阅读、实现经验，以及一些正在学习的东西。"
+        "I am an engineer at LanceDB, working on vector search, full-text search, query engines, and distributed systems.",
+        "Before this, I was an ACM contestant and an Overwatch player. These days I am learning racing, mostly for the same reason I like systems work: small details compound, feedback is immediate, and good performance is earned through disciplined iteration.",
+        "This blog is where I keep technical notes, paper readings, implementation write-ups, and the occasional record of what I am learning along the way."
       ]
     },
     article: {
