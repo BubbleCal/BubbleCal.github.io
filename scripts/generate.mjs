@@ -134,6 +134,12 @@ const categoryNameMap = new Map([
   ["硬件", "Hardware"],
   ["默认分类", "General"]
 ]);
+const categorySlugMap = new Map([
+  ["Technology", "tech"],
+  ["Paper Reading", "PaperReading"],
+  ["Hardware", "hardware"],
+  ["General", "general"]
+]);
 const generatedTagsBySlug = new Map([
   ["4bitpqreadingimplementing", ["Vector Search", "Product Quantization", "SIMD"]],
   [
@@ -287,6 +293,39 @@ function slugifyTag(name) {
     .replace(/^-+|-+$/g, "");
 }
 
+function tagObjects(names) {
+  return names.map((name) => ({
+    name,
+    slug: slugifyTag(name),
+    color: "#cfd3d7"
+  }));
+}
+
+function tagNames(tags = []) {
+  return tags
+    .map((tag) => (typeof tag === "string" ? tag : tag?.name))
+    .filter(Boolean);
+}
+
+function categoryObjects(categories = []) {
+  return categories
+    .map((category) => {
+      const name = displayCategoryName(typeof category === "string" ? category : category?.name);
+      return {
+        name,
+        slug: typeof category === "object" && category?.slug
+          ? category.slug
+          : categorySlugMap.get(name) || slugifyTag(name)
+      };
+    })
+    .filter((category) => category.name && category.slug);
+}
+
+function categoriesForPost(categories) {
+  const parsed = categoryObjects(categories);
+  return parsed.length ? parsed : [{ name: "General", slug: "general" }];
+}
+
 function slugifyHeading(value) {
   return String(value)
     .toLowerCase()
@@ -297,11 +336,10 @@ function slugifyHeading(value) {
 }
 
 function tagsForPost(post) {
-  return (generatedTagsBySlug.get(post.slug) || []).map((name) => ({
-    name,
-    slug: slugifyTag(name),
-    color: "#cfd3d7"
-  }));
+  if (post.tags?.length && typeof post.tags[0] === "string") {
+    return tagObjects(post.tags);
+  }
+  return tagObjects(generatedTagsBySlug.get(post.slug) || []);
 }
 
 function inlineMarkdown(value) {
@@ -520,6 +558,8 @@ function shell({ lang, title, description, body, page = "", canonical = "/", alt
   <link rel="alternate" hreflang="${escapeAttr(locales.zh.htmlLang)}" href="${escapeAttr(absoluteUrl(canonical.replace(`/${lang}/`, "/zh/")))}">
   <link rel="alternate" hreflang="${escapeAttr(locales.en.htmlLang)}" href="${escapeAttr(absoluteUrl(canonical.replace(`/${lang}/`, "/en/")))}">
   <link rel="alternate" type="application/rss+xml" title="${escapeAttr(site.title)}" href="/${lang}/feed.xml">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#101514">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <link rel="stylesheet" href="/assets/site.css">
@@ -826,6 +866,8 @@ function languageRedirectPage({ title = site.title, zhPath, enPath }) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(title)}</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#101514">
   <script>
     (function () {
       var saved = localStorage.getItem("yah01-blog-language");
@@ -854,7 +896,101 @@ async function write(file, content) {
   await fs.writeFile(target, content);
 }
 
+async function pathExists(target) {
+  try {
+    await fs.access(target);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function localizedMap(value) {
+  if (!value) {
+    return {};
+  }
+  if (typeof value === "string") {
+    return { zh: value, en: value };
+  }
+  return value;
+}
+
+async function loadContentPosts(postsRoot) {
+  if (!(await pathExists(postsRoot))) {
+    return [];
+  }
+
+  const entries = await fs.readdir(postsRoot, { withFileTypes: true });
+  const posts = [];
+  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const postDir = path.join(postsRoot, entry.name);
+    const metadataPath = path.join(postDir, "post.json");
+    if (!(await pathExists(metadataPath))) {
+      continue;
+    }
+
+    const metadata = JSON.parse(await fs.readFile(metadataPath, "utf8"));
+    const slug = metadata.slug || entry.name;
+    const titles = localizedMap(metadata.titles || metadata.title);
+    const summaries = localizedMap(metadata.summaries || metadata.summary);
+    const contentByLang = {};
+    for (const lang of languages) {
+      const markdownPath = path.join(postDir, `${lang}.md`);
+      if (!(await pathExists(markdownPath))) {
+        throw new Error(`Missing ${lang}.md for content post ${slug}`);
+      }
+      contentByLang[lang] = await fs.readFile(markdownPath, "utf8");
+    }
+
+    posts.push({
+      id: metadata.id || `content-${slug}`,
+      slug,
+      create_time: metadata.create_time || metadata.date,
+      update_time: metadata.update_time || null,
+      thumbnail: metadata.thumbnail || "",
+      visits: metadata.visits || 0,
+      likes: metadata.likes || 0,
+      categories: categoriesForPost(metadata.categories),
+      tags: tagObjects(tagNames(metadata.tags)),
+      titles,
+      summaries,
+      title: titles.zh || titles.en || slug,
+      summary: summaries.zh || summaries.en || "",
+      format_content: "",
+      word_count: 0,
+      heroImage: metadata.thumbnail || ""
+    });
+  }
+
+  return posts;
+}
+
 function localizePost(post, lang) {
+  if (post.contentByLang) {
+    const markdownContent = post.contentByLang[lang];
+    if (!markdownContent) {
+      throw new Error(`Missing ${lang} Markdown content for ${post.slug}`);
+    }
+    const formatContent = renderMarkdown(markdownContent);
+    return enhancePostContent({
+      ...post,
+      contentByLang: undefined,
+      titles: undefined,
+      summaries: undefined,
+      language: lang,
+      title: post.titles?.[lang] || post.title,
+      summary: post.summaries?.[lang] || stripHtml(formatContent).slice(0, 190),
+      format_content: formatContent,
+      word_count: lang === "en"
+        ? stripHtml(formatContent).split(/\s+/).filter(Boolean).length
+        : stripHtml(formatContent).length
+    }, lang);
+  }
+
   if (lang === "zh") {
     return enhancePostContent({
       ...post,
@@ -880,6 +1016,7 @@ function localizePost(post, lang) {
 }
 
 async function main() {
+  const contentPosts = await loadContentPosts(path.join(projectRoot, "content", "posts"));
   const rows = query(`
     select id, title, slug, create_time, update_time, format_content, summary,
            thumbnail, word_count, visits, likes
@@ -905,14 +1042,20 @@ async function main() {
     categoriesByPost.get(row.post_id).push({ name: displayCategoryName(row.name), slug: row.slug });
   }
 
-  const basePosts = rows.map((post) => ({
+  const migratedPosts = rows.map((post) => ({
     ...post,
     categories: categoriesByPost.get(post.id) || [],
     tags: tagsForPost(post),
     heroImage: post.thumbnail || firstImage(post.format_content)
   }));
+  const basePosts = [
+    ...contentPosts,
+    ...migratedPosts
+  ].sort((left, right) => toDate(right.create_time) - toDate(left.create_time));
 
-  const publicCategories = [...new Map(categoryRows.map((row) => [row.slug, row])).values()];
+  const publicCategories = [
+    ...new Map(basePosts.flatMap((post) => post.categories).map((category) => [category.slug, category])).values()
+  ];
   const postsByLanguage = new Map(languages.map((lang) => [lang, basePosts.map((post) => localizePost(post, lang))]));
   const publicTags = [
     ...new Map(basePosts.flatMap((post) => post.tags).map((tag) => [tag.slug, tag])).values()
@@ -964,7 +1107,7 @@ async function main() {
     );
   }
 
-  console.log(`Generated ${basePosts.length} posts in ${languages.length} languages from ${dbPath}`);
+  console.log(`Generated ${basePosts.length} posts in ${languages.length} languages from content/posts and ${dbPath}`);
 }
 
 main().catch((error) => {
